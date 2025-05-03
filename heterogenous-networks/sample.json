@@ -1,0 +1,138 @@
+{
+  "attributeTypes": [
+    { "dataType": "string", "name": "Department Name", "text": "" },
+    { "dataType": "string", "name": "Model", "text": "" },
+    { "dataType": "string", "name": "Role", "text": "" },
+    { "dataType": "string", "name": "Operating System", "text": "" },
+    { "dataType": "string", "name": "Specialty", "text": "" }
+  ],
+  "edgeArchetypes": [
+    { "name": "uses", "text": "" },
+    { "name": "belongs to", "text": "" },
+    { "name": "invented", "text": "" }
+  ],
+  "vertexArchetypes": [
+    { "icon": "<svg></svg>", "name": "Person", "text": "" },
+    { "icon": "<svg></svg>", "name": "Printer", "text": "" },
+    { "icon": "<svg></svg>", "name": "Department", "text": "" },
+    { "icon": "<svg></svg>", "name": "Computer", "text": "" },
+    { "icon": "<svg></svg>", "name": "Inventor", "text": "" }
+  ],
+  "vertices": [
+    {
+      "archetype": 0,
+      "attributes": [
+        [2, "Developer"]
+      ],
+      "id": 1,
+      "text": "",
+      "name": "Alice",
+      "position": { "x": 1.0, "y": 1.0 }
+    },
+    {
+      "archetype": 0,
+      "attributes": [
+        [2, "SysAdmin"]
+      ],
+      "id": 2,
+      "text": "",
+      "name": "Bob",
+      "position": { "x": 1.0, "y": 3.0 }
+    },
+    {
+      "archetype": 1,
+      "attributes": [
+        [1, "HP LaserJet Pro M404"]
+      ],
+      "id": 3,
+      "text": "",
+      "name": "Printer A",
+      "position": { "x": 5.0, "y": 2.0 }
+    },
+    {
+      "archetype": 2,
+      "attributes": [
+        [0, "IT Department"]
+      ],
+      "id": 4,
+      "text": "",
+      "name": "IT Dept",
+      "position": { "x": 3.0, "y": 4.0 }
+    },
+    {
+      "archetype": 3,
+      "attributes": [
+        [3, "Windows 11"]
+      ],
+      "id": 5,
+      "text": "",
+      "name": "Computer A",
+      "position": { "x": 2.5, "y": 0.5 }
+    },
+    {
+      "archetype": 4,
+      "attributes": [
+        [4, "Mechanical Computing"]
+      ],
+      "id": 6,
+      "text": "",
+      "name": "Charles",
+      "position": { "x": 0.5, "y": 0.0 }
+    }
+  ],
+  "edges": [
+    {
+      "subedgeInfo": [{ "id": 100, "archetype": 0, "attributes": [] }],
+      "from": 1,
+      "id": 200,
+      "text": "",
+      "to": 3
+    },
+    {
+      "subedgeInfo": [{ "id": 101, "archetype": 0, "attributes": [] }],
+      "from": 2,
+      "id": 201,
+      "text": "",
+      "to": 3
+    },
+    {
+      "subedgeInfo": [{ "id": 102, "archetype": 1, "attributes": [] }],
+      "from": 1,
+      "id": 202,
+      "text": "",
+      "to": 4
+    },
+    {
+      "subedgeInfo": [{ "id": 103, "archetype": 1, "attributes": [] }],
+      "from": 2,
+      "id": 203,
+      "text": "",
+      "to": 4
+    },
+    {
+      "subedgeInfo": [{ "id": 104, "archetype": 0, "attributes": [] }],
+      "from": 1,
+      "id": 204,
+      "text": "",
+      "to": 5
+    },
+    {
+      "subedgeInfo": [{ "id": 105, "archetype": 2, "attributes": [] }],
+      "from": 6,
+      "id": 205,
+      "text": "",
+      "to": 5
+    }
+  ],
+  "possibleEnumValues": {},
+  "groups": [],
+  "sideBar": [
+    { "id": "vertex-1", "isIconsDisplayed": true },
+    { "id": "vertex-2", "isIconsDisplayed": true },
+    { "id": "vertex-3", "isIconsDisplayed": true },
+    { "id": "vertex-6", "isIconsDisplayed": true }
+  ],
+  "highlightedVertex": "vertex-6",
+  "highlightedEdge": "205"
+}
+
