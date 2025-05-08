@@ -134,3 +134,7 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+viz-project/tsconfig.json
+viz-project/package-lock.json
+viz-project/tsconfig.json
+viz-project/package-lock.json
