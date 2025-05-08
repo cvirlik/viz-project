@@ -3,6 +3,9 @@ import * as d3 from 'd3';
 import '../styles/NetworkVisualization.css';
 import historicalData from '../data/historical-data.json';
 
+// SimulationNode je nadtrida patrici D3. Do nasi custom class Node muzeme dat co chceme.
+// Datum je jejich ekvivalent ke slovu Data,
+// jenž znamená že to jsou data co se moc nemění, proto jsou dobré k vizualizaci.
 interface Node extends d3.SimulationNodeDatum {
   id: string;
   name: string;
@@ -21,7 +24,9 @@ interface GraphData {
 }
 
 const NetworkVisualization: React.FC = () => {
+  // Vizualizace se bude renderovat do tohoto SVG elementu.
   const svgRef = useRef<SVGSVGElement>(null);
+  // Tooltip je ta lista vpravo.
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,13 +50,14 @@ const NetworkVisualization: React.FC = () => {
 
     // Set up the force simulation
     const simulation = d3
-      .forceSimulation()
+      .forceSimulation() // Podle mě odpovíá tomu layutování z toho jednoho krátkého premenu, co nám dodal cvičící. (spring force layouting).
+      // https://drive.google.com/file/d/1UMwayZD2AVxDhui93asNkD-61OSJJidL/view?usp=sharing - strana 6
       .force(
         'link',
         d3
           .forceLink()
           .id((d: any) => d.id)
-          .distance(100),
+          .distance(100), // Nahradíme algoritmem z https://drive.google.com/file/d/1nSjlthV4vIbGfSwFVkhZKfrTNP68IaVb/view?usp=sharing
       )
       .force('charge', d3.forceManyBody().strength(-300))
       .force('center', d3.forceCenter(width / 2, height / 2));
@@ -100,7 +106,7 @@ const NetworkVisualization: React.FC = () => {
     // Add circles to nodes
     node
       .append('circle')
-      .attr('r', 5)
+      .attr('r', 5) // Custom Radius kružnice se vytratil při importu do Reactu. Pak ho vrátím.
       .attr('fill', (d) => d3.schemeCategory10[d.group % 10]);
 
     // Add labels to nodes
