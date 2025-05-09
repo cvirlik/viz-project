@@ -26,7 +26,7 @@ interface GraphData {
 const NetworkVisualization: React.FC = () => {
   // Vizualizace se bude renderovat do tohoto SVG elementu.
   const svgRef = useRef<SVGSVGElement>(null);
-  // Tooltip je ta lista vpravo.
+  // Tooltip je ten dialog co se objevi pri najeti kurzorem na node.
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
