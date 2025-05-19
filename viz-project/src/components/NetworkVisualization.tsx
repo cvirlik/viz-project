@@ -66,7 +66,6 @@ export const NetworkVisualization: React.FC = () => {
     const svgEl = svgRef.current;
     if (!svgEl) return;
 
-
     const width = svgEl.clientWidth;
     const height = svgEl.clientHeight;
     const svg = d3.select(svgEl).attr('width', width).attr('height', height);
@@ -91,7 +90,6 @@ export const NetworkVisualization: React.FC = () => {
       degree: 0,
     }));
 
-
     const links: LinkData[] = historicalData.edges.map((e) => ({
       source: String(e.from),
       target: String(e.to),
@@ -102,21 +100,6 @@ export const NetworkVisualization: React.FC = () => {
     const neighborMap = new Map<string, Set<string>>();
 
     links.forEach(({ source, target }) => {
-      let srcSet = neighborMap.get(source);
-      if (!srcSet) {
-        srcSet = new Set<string>();
-        neighborMap.set(source, srcSet);
-      }
-      srcSet.add(target);
-
-      let tgtSet = neighborMap.get(target);
-      if (!tgtSet) {
-        tgtSet = new Set<string>();
-        neighborMap.set(target, tgtSet);
-      }
-      tgtSet.add(source);
-    });
-
       let srcSet = neighborMap.get(source);
       if (!srcSet) {
         srcSet = new Set<string>();
