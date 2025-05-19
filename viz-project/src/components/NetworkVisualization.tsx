@@ -23,6 +23,7 @@ interface LinkData {
   source: string;
   target: string;
   value: number;
+  gradientId: string;
 }
 
 export const NetworkVisualization: React.FC = () => {
@@ -61,7 +62,16 @@ export const NetworkVisualization: React.FC = () => {
       source: String(e.from),
       target: String(e.to),
       value: 1,
+      gradientId: `grad-${e.from}-${e.to}`,
     }));
+
+    const neighborMap = new Map<string, Set<string>>();
+    links.forEach(({ source, target }) => {
+      if (!neighborMap.has(source)) neighborMap.set(source, new Set());
+      if (!neighborMap.has(target)) neighborMap.set(target, new Set());
+      neighborMap.get(source)!.add(target);
+      neighborMap.get(target)!.add(source);
+    });
 
     // draw links
     const linkSel = g
@@ -71,7 +81,8 @@ export const NetworkVisualization: React.FC = () => {
       .enter()
       .append('line')
       .attr('class', 'link')
-      .attr('stroke-width', (d) => Math.sqrt(d.value));
+      .attr('stroke-width', (d) => Math.sqrt(d.value))
+      .attr('stroke', '#999');
 
     // Add edge labels
     const edgeLabels = g
@@ -116,16 +127,28 @@ export const NetworkVisualization: React.FC = () => {
     nodeSel
       .on('mouseover', (event, d) => {
         const ttEl = tooltipRef.current;
-        if (!ttEl) return;
-        d3.select(ttEl)
-          .style('opacity', 1)
-          .html(`<strong>${d.name}</strong><br/>Group: ${d.group}`)
-          .style('left', `${event.pageX + 10}px`)
-          .style('top', `${event.pageY - 28}px`);
+        if (ttEl) {
+          d3.select(ttEl)
+            .style('opacity', 1)
+            .html(`<strong>${d.name}</strong><br/>Group: ${d.group}`)
+            .style('left', `${event.pageX + 10}px`)
+            .style('top', `${event.pageY - 28}px`);
+        }
+
+        // highlight d and its neighbors
+        const nbrs = new Set(neighborMap.get(d.id));
+        nbrs.add(d.id);
+
+        nodeSel.style('opacity', (nd) => (nbrs.has(nd.id) ? 1 : 0.1));
+        linkSel.style('opacity', (lk) =>
+          nbrs.has(lk.source) && nbrs.has(lk.target) ? 1 : 0.1,
+        );
       })
       .on('mouseout', () => {
-        const ttEl = tooltipRef.current;
-        if (ttEl) d3.select(ttEl).style('opacity', 0);
+        if (tooltipRef.current)
+          d3.select(tooltipRef.current).style('opacity', 0);
+        nodeSel.style('opacity', 1);
+        linkSel.style('opacity', 1);
       });
 
     // run layout (returns original array mutated)
@@ -217,10 +240,11 @@ export const NetworkVisualization: React.FC = () => {
       applyFisheye(d);
     });
 
-    linkSel.on('click', (event, d) => {
+    const getLinkAction = (link: LinkData) => {
       const transform = d3.zoomTransform(svgEl);
-      const source = nodes.find((node) => node.id === d.source);
-      const target = nodes.find((node) => node.id === d.target);
+
+      const source = nodes.find((node) => node.id === link.source);
+      const target = nodes.find((node) => node.id === link.target);
 
       // screen coords of source
       const [sx, sy] = transform.apply([source!.x, source!.y]);
@@ -230,8 +254,15 @@ export const NetworkVisualization: React.FC = () => {
       const [tx, ty] = transform.apply([target!.x, target!.y]);
       const td = Math.hypot(width / 2 - tx, height / 2 - ty);
 
-      const next = sd > td ? source : target;
+      return {
+        transform,
+        from: sd > td ? target : source,
+        to: sd > td ? source : target,
+      };
+    };
 
+    linkSel.on('click', (event, d) => {
+      const { transform, to: next } = getLinkAction(d);
       const scale = transform.k;
       const x = next!.x,
         y = next!.y;
@@ -249,15 +280,50 @@ export const NetworkVisualization: React.FC = () => {
         );
     });
 
+    const defs = svg.append('defs');
+
     linkSel
       .on('mouseover', function (event, d) {
-        const line = d3.select(this);
-        line.attr('data-old-width', line.attr('stroke-width'));
-        line.attr('stroke-width', 10);
+        const lineElem = this as SVGLineElement;
+        const lineSel = d3.select(lineElem);
+        const gradId = d.gradientId;
+        // remove old gradient
+        defs.select(`#${gradId}`).remove();
+
+        const { from, to } = getLinkAction(d);
+
+        const grad = defs
+          .append('linearGradient')
+          .attr('id', gradId)
+          .attr('gradientUnits', 'userSpaceOnUse')
+          .attr('x1', from!.x)
+          .attr('y1', from!.y)
+          .attr('x2', to!.x)
+          .attr('y2', to!.y);
+        // transparent at from end, opaque at to end
+        grad
+          .append('stop')
+          .attr('offset', '0%')
+          .attr('stop-color', d3.schemeCategory10[from!.group % 10])
+          .attr('stop-opacity', 0);
+        grad
+          .append('stop')
+          .attr('offset', '100%')
+          .attr('stop-color', d3.schemeCategory10[to!.group % 10])
+          .attr('stop-opacity', 1);
+        // apply gradient
+        lineSel
+          .attr('stroke', `url(#${gradId})`)
+          .attr('stroke-width', 10)
+          .attr('stroke-opacity', 1);
       })
-      .on('mouseout', function () {
-        const line = d3.select(this);
-        line.attr('stroke-width', line.attr('data-old-width'));
+      .on('mouseout', function (event, d) {
+        const lineSel = d3.select(this);
+        defs.select(`#${d.gradientId}`).remove();
+        lineSel
+          .attr('stroke', '#999')
+          .attr('stroke-width', Math.sqrt(d.value))
+          .attr('stroke-opacity', 0.6);
       });
 
     updateDisplay();
