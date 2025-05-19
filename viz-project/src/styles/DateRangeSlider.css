@@ -1,0 +1,50 @@
+.date-range-slider {
+  padding: 16px;
+  background-color: #34495e;
+  border-radius: 4px;
+  margin: 16px 0;
+  color: white;
+}
+
+.date-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.min-date, .max-date {
+  color: #95a5a6;
+  font-size: 12px;
+}
+
+.date-range-slider .MuiSlider-root {
+  color: #3498db;
+}
+
+.date-range-slider .MuiSlider-thumb {
+  width: 16px;
+  height: 16px;
+  background-color: #3498db;
+}
+
+.date-range-slider .MuiSlider-track {
+  height: 4px;
+  background-color: #3498db;
+}
+
+.date-range-slider .MuiSlider-rail {
+  height: 4px;
+  background-color: #7f8c8d;
+}
+
+.date-range-slider .MuiSlider-valueLabel {
+  background-color: #3498db;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: white;
+}
+
+.date-range-slider .MuiTypography-root {
+  color: white;
+}

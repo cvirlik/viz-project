@@ -2,9 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import '../styles/NetworkVisualization.css';
 import '../styles/SearchBar.css';
+import '../styles/DateRangeSlider.css';
 import historicalData from '../data/historical-data.json';
 import { FruchtermanReingold } from '../layouts/FruchtermanReingold';
 import SearchResults from './SearchResults';
+import { DateRangeSlider } from './DateRangeSlider';
 import { NodeDatum } from '../types/NodeDatum';
 import { calculateDOI } from '../utils/doiCalculator';
 
@@ -20,7 +22,16 @@ export const NetworkVisualization: React.FC = () => {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [positioned, setPositioned] = useState<NodeDatum[]>([]);
+  const [dateRange, setDateRange] = useState<{ min: number; max: number }>({
+    min: new Date('1910-01-01').getTime(),
+
+    max: new Date('2024-01-01').getTime(),
+  });
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>();
+
+  const handleDateRangeChange = (minDate: number, maxDate: number) => {
+    setDateRange({ min: minDate, max: maxDate });
+  };
 
   useEffect(() => {
     const svgEl = svgRef.current;
@@ -378,38 +389,38 @@ export const NetworkVisualization: React.FC = () => {
       <div id="visualization-container">
         <svg id="visualization" ref={svgRef} />
       </div>
-      {/* Pravy sidebar s vyhledavanim */}
       <div id="sidebar">
-        <div className="search-container">
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Vyhledávat v záznamech.."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          {/* Dekorace */}
-          <svg
-            className="search-icon"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+        <div className="faceted-search">
+          <div className="search-container">
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Vyhledávat v záznamech.."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <svg
+              className="search-icon"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </div>
+          <DateRangeSlider onRangeChange={handleDateRangeChange} />
         </div>
         <SearchResults
           searchQuery={searchQuery}
           onResultClick={handleResultClick}
         />
       </div>
-      {/* Tooltip k Node */}
       <div id="tooltip" className="tooltip" ref={tooltipRef}></div>
     </div>
   );
