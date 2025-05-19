@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import '../styles/NetworkVisualization.css';
 import historicalData from '../data/historical-data.json';
+import { FruchtermanReingold } from '../layouts/FruchtermanReingold';
 
 // SimulationNode je nadtrida patrici D3. Do nasi custom class Node muzeme dat co chceme.
 // Datum je jejich ekvivalent ke slovu Data,
@@ -48,27 +49,14 @@ const NetworkVisualization: React.FC = () => {
     // Create a group for the visualization
     const g = svg.append('g');
 
-    // Set up the force simulation
-    const simulation = d3
-      .forceSimulation() // Podle mě odpovíá tomu layutování z toho jednoho krátkého premenu, co nám dodal cvičící. (spring force layouting).
-      // https://drive.google.com/file/d/1UMwayZD2AVxDhui93asNkD-61OSJJidL/view?usp=sharing - strana 6
-      .force(
-        'link',
-        d3
-          .forceLink()
-          .id((d: any) => d.id)
-          .distance(100), // Nahradíme algoritmem z https://drive.google.com/file/d/1nSjlthV4vIbGfSwFVkhZKfrTNP68IaVb/view?usp=sharing
-      )
-      .force('charge', d3.forceManyBody().strength(-300))
-      .force('center', d3.forceCenter(width / 2, height / 2));
-
     // Transform the data into the correct format
     const nodes = historicalData.vertices.map((vertex) => ({
       id: vertex.id.toString(),
       name: vertex.title,
       group: vertex.archetype,
+      x: Math.random() * width, // Initial random positions
+      y: Math.random() * height,
     }));
-
     const links = historicalData.edges.map((edge) => ({
       source: edge.from.toString(),
       target: edge.to.toString(),
@@ -106,7 +94,7 @@ const NetworkVisualization: React.FC = () => {
     // Add circles to nodes
     node
       .append('circle')
-      .attr('r', 5) // Custom Radius kružnice se vytratil při importu do Reactu. Pak ho vrátím.
+      .attr('r', 30)
       .attr('fill', (d) => d3.schemeCategory10[d.group % 10]);
 
     // Add labels to nodes
@@ -132,41 +120,79 @@ const NetworkVisualization: React.FC = () => {
         d3.select(tooltipRef.current).style('opacity', 0);
       });
 
-    // Update the simulation
-    simulation.nodes(data.nodes).on('tick', () => {
+    // Initialize Fruchterman-Reingold layout
+    const layout = new FruchtermanReingold(
+      nodes,
+      links.map((link) => ({
+        source: nodes.find((n) => n.id === link.source)!,
+        target: nodes.find((n) => n.id === link.target)!,
+      })),
+      {
+        width,
+        height,
+        iterations: 100,
+        temperature: width / 4,
+        coolingFactor: 0.95,
+      },
+    );
+
+    // Run the layout algorithm
+    const updatedNodes = layout.run();
+
+    // Update the visualization with the new positions
+    function updatePositions() {
       link
-        .attr('x1', (d: any) => d.source.x)
-        .attr('y1', (d: any) => d.source.y)
-        .attr('x2', (d: any) => d.target.x)
-        .attr('y2', (d: any) => d.target.y);
+        .attr('x1', (d: any) => {
+          const source = updatedNodes.find((n) => n.id === d.source);
+          return source?.x || 0;
+        })
+        .attr('y1', (d: any) => {
+          const source = updatedNodes.find((n) => n.id === d.source);
+          return source?.y || 0;
+        })
+        .attr('x2', (d: any) => {
+          const target = updatedNodes.find((n) => n.id === d.target);
+          return target?.x || 0;
+        })
+        .attr('y2', (d: any) => {
+          const target = updatedNodes.find((n) => n.id === d.target);
+          return target?.y || 0;
+        });
 
-      node.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
-    });
+      node.attr('transform', (d: any) => {
+        const node = updatedNodes.find((n) => n.id === d.id);
+        return `translate(${node?.x || 0},${node?.y || 0})`;
+      });
+    }
 
-    simulation.force<d3.ForceLink<any, any>>('link')?.links(data.links);
+    // Initial position update
+    updatePositions();
 
     // Drag functions
     function dragstarted(event: any) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      event.subject.fx = event.subject.x;
-      event.subject.fy = event.subject.y;
+      const node = updatedNodes.find((n) => n.id === event.subject.id);
+      if (node) {
+        node.fx = node.x;
+        node.fy = node.y;
+      }
     }
 
     function dragged(event: any) {
-      event.subject.fx = event.x;
-      event.subject.fy = event.y;
+      const node = updatedNodes.find((n) => n.id === event.subject.id);
+      if (node) {
+        node.fx = event.x;
+        node.fy = event.y;
+        updatePositions();
+      }
     }
 
     function dragended(event: any) {
-      if (!event.active) simulation.alphaTarget(0);
-      event.subject.fx = null;
-      event.subject.fy = null;
+      const node = updatedNodes.find((n) => n.id === event.subject.id);
+      if (node) {
+        node.fx = null;
+        node.fy = null;
+      }
     }
-
-    // Cleanup function
-    return () => {
-      simulation.stop();
-    };
   }, []);
 
   return (
