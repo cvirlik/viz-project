@@ -5,7 +5,7 @@
 }
 
 #visualization-container {
-  width: 80%;
+  flex: 1;
   height: 100vh;
 }
 
@@ -15,6 +15,7 @@
 }
 
 #sidebar {
+  min-width: 400px;
   width: 20%;
   height: 100vh;
   background-color: #2c3e50;
