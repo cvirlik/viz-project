@@ -73,6 +73,21 @@ export const NetworkVisualization: React.FC = () => {
       .attr('class', 'link')
       .attr('stroke-width', (d) => Math.sqrt(d.value));
 
+    // Add edge labels
+    const edgeLabels = g
+      .append('g')
+      .selectAll('text')
+      .data(links)
+      .enter()
+      .append('text')
+      .attr('class', 'edge-label')
+      .text((d) => {
+        const edge = historicalData.edges.find(
+          (e) => String(e.from) === d.source && String(e.to) === d.target,
+        );
+        return edge?.attributes?.['3'] || '';
+      });
+
     // draw nodes
     const nodeSel = g
       .append('g')
@@ -159,6 +174,26 @@ export const NetworkVisualization: React.FC = () => {
           const n = positioned.find((n) => n.id === d.target);
           return n ? (n.displayY ?? n.y) : 0;
         });
+
+      // Update edge label positions
+      edgeLabels
+        .attr('x', (d) => {
+          const source = positioned.find((n) => n.id === d.source);
+          const target = positioned.find((n) => n.id === d.target);
+          if (!source || !target) return 0;
+          const sourceX = source.displayX ?? source.x;
+          const targetX = target.displayX ?? target.x;
+          return (sourceX + targetX) / 2;
+        })
+        .attr('y', (d) => {
+          const source = positioned.find((n) => n.id === d.source);
+          const target = positioned.find((n) => n.id === d.target);
+          if (!source || !target) return 0;
+          const sourceY = source.displayY ?? source.y;
+          const targetY = target.displayY ?? target.y;
+          return (sourceY + targetY) / 2;
+        });
+
       nodeSel.attr('transform', (d) => {
         const n = positioned.find((n) => n.id === d.id);
         const x = n ? (n.displayX ?? n.x) : d.x;
