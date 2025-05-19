@@ -217,6 +217,49 @@ export const NetworkVisualization: React.FC = () => {
       applyFisheye(d);
     });
 
+    linkSel.on('click', (event, d) => {
+      const transform = d3.zoomTransform(svgEl);
+      const source = nodes.find((node) => node.id === d.source);
+      const target = nodes.find((node) => node.id === d.target);
+
+      // screen coords of source
+      const [sx, sy] = transform.apply([source!.x, source!.y]);
+      const sd = Math.hypot(width / 2 - sx, height / 2 - sy);
+
+      // screen coords of target
+      const [tx, ty] = transform.apply([target!.x, target!.y]);
+      const td = Math.hypot(width / 2 - tx, height / 2 - ty);
+
+      const next = sd > td ? source : target;
+
+      const scale = transform.k;
+      const x = next!.x,
+        y = next!.y;
+      const cx = width / 2,
+        cy = height / 2;
+
+      svg
+        .transition()
+        .duration(750)
+        .call(
+          zoomBehavior.transform,
+          d3.zoomIdentity
+            .translate(cx - x * scale, cy - y * scale)
+            .scale(scale),
+        );
+    });
+
+    linkSel
+      .on('mouseover', function (event, d) {
+        const line = d3.select(this);
+        line.attr('data-old-width', line.attr('stroke-width'));
+        line.attr('stroke-width', 10);
+      })
+      .on('mouseout', function () {
+        const line = d3.select(this);
+        line.attr('stroke-width', line.attr('data-old-width'));
+      });
+
     updateDisplay();
 
     function onDragStart(
