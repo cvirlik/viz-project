@@ -1,8 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import '../styles/NetworkVisualization.css';
+import '../styles/SearchBar.css';
 import historicalData from '../data/historical-data.json';
 import { FruchtermanReingold } from '../layouts/FruchtermanReingold';
+import SearchResults from './SearchResults';
 
 // SimulationNode je nadtrida patrici D3. Do nasi custom class Node muzeme dat co chceme.
 // Datum je jejich ekvivalent ke slovu Data,
@@ -29,6 +31,7 @@ const NetworkVisualization: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
   // Tooltip je ten dialog co se objevi pri najeti kurzorem na node.
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -193,14 +196,52 @@ const NetworkVisualization: React.FC = () => {
         node.fy = null;
       }
     }
-  }, []);
+  });
+
+  const handleResultClick = (nodeId: string) => {
+    throw new Error(
+      'Funkce onclick zatím není implementována NetworkVisualization.tsx - řádek 202 (přibližně)\n\n',
+    );
+  };
 
   return (
     <div id="main-container">
       <div id="visualization-container">
+        {/* D3 vizualizace */}
         <svg id="visualization" ref={svgRef}></svg>
       </div>
-      <div id="sidebar">{/* Future elements will go here */}</div>
+      {/* Pravy sidebar s vyhledavanim */}
+      <div id="sidebar">
+        <div className="search-container">
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Vyhledávat v záznamech.."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {/* Dekorace */}
+          <svg
+            className="search-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </div>
+        <SearchResults
+          searchQuery={searchQuery}
+          onResultClick={handleResultClick}
+        />
+      </div>
+      {/* Tooltip k Node */}
       <div id="tooltip" className="tooltip" ref={tooltipRef}></div>
     </div>
   );
