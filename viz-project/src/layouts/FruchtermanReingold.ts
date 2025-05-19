@@ -1,35 +1,25 @@
-/**
- * Implementation of the Fruchterman-Reingold force-directed layout algorithm
- * Based on the paper: "Graph Drawing by Force-directed Placement"
- * Authors: Thomas M. J. Fruchterman and Edward M. Reingold
- *
- * This algorithm positions nodes in a graph using a force-directed approach,
- * where nodes repel each other and edges act as springs pulling connected nodes together.
- */
-
 interface Point {
   x: number;
   y: number;
 }
-
-interface Node extends Point {
+interface Node {
   id: string;
+  x: number;
+  y: number;
   fx?: number | null;
   fy?: number | null;
 }
-
 interface Link {
   source: Node;
   target: Node;
 }
-
-interface FruchtermanReingoldOptions {
+interface Options {
   width: number;
   height: number;
   iterations?: number;
-  k?: number; // Optimal distance between nodes
-  temperature?: number; // Initial temperature for simulated annealing
-  coolingFactor?: number; // Factor to reduce temperature each iteration
+  k?: number;
+  temperature?: number;
+  coolingFactor?: number;
 }
 
 export class FruchtermanReingold {
@@ -41,119 +31,99 @@ export class FruchtermanReingold {
   private coolingFactor: number;
   private nodes: Node[];
   private links: Link[];
-  private forces: Map<string, Point>;
+  private forces = new Map<string, Point>();
 
-  constructor(
-    nodes: Node[],
-    links: Link[],
-    options: FruchtermanReingoldOptions,
-  ) {
+  constructor(nodes: Node[], links: Link[], options: Options) {
     this.nodes = nodes;
     this.links = links;
     this.width = options.width;
     this.height = options.height;
-    this.iterations = options.iterations || 50;
+    this.iterations = options.iterations ?? 50;
     this.k =
-      options.k || Math.sqrt((this.width * this.height) / this.nodes.length);
-    this.temperature = options.temperature || this.width / 4;
-    this.coolingFactor = options.coolingFactor || 0.95;
-    this.forces = new Map();
+      options.k ?? Math.sqrt((this.width * this.height) / this.nodes.length);
+    this.temperature = options.temperature ?? this.width / 4;
+    this.coolingFactor = options.coolingFactor ?? 0.95;
   }
 
-  /**
-   * Calculate repulsive forces between all pairs of nodes
-   * F_rep = k^2 / d
-   */
-  private calculateRepulsiveForces(): void {
+  private calculateRepulsiveForces() {
     this.forces.clear();
-    this.nodes.forEach((node) => {
-      this.forces.set(node.id, { x: 0, y: 0 });
-    });
-
+    this.nodes.forEach((n) => this.forces.set(n.id, { x: 0, y: 0 }));
     for (let i = 0; i < this.nodes.length; i++) {
-      const node1 = this.nodes[i];
       for (let j = i + 1; j < this.nodes.length; j++) {
-        const node2 = this.nodes[j];
-        const dx = node2.x - node1.x;
-        const dy = node2.y - node1.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance > 0) {
-          const force = (this.k * this.k) / distance;
-          const forceX = (dx / distance) * force;
-          const forceY = (dy / distance) * force;
-
-          const force1 = this.forces.get(node1.id)!;
-          const force2 = this.forces.get(node2.id)!;
-
-          force1.x -= forceX;
-          force1.y -= forceY;
-          force2.x += forceX;
-          force2.y += forceY;
+        const a = this.nodes[i],
+          b = this.nodes[j];
+        const dx = b.x - a.x,
+          dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist === 0) continue;
+        const force = (this.k * this.k) / dist;
+        const fx = (dx / dist) * force;
+        const fy = (dy / dist) * force;
+        const fa = this.forces.get(a.id),
+          fb = this.forces.get(b.id);
+        if (fa && fb) {
+          fa.x -= fx;
+          fa.y -= fy;
+          fb.x += fx;
+          fb.y += fy;
         }
       }
     }
   }
 
-  /**
-   * Calculate attractive forces along edges
-   * F_att = d^2 / k
-   */
-  private calculateAttractiveForces(): void {
+  private calculateAttractiveForces() {
     this.links.forEach((link) => {
       const dx = link.target.x - link.source.x;
       const dy = link.target.y - link.source.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      if (distance > 0) {
-        const force = (distance * distance) / this.k;
-        const forceX = (dx / distance) * force;
-        const forceY = (dy / distance) * force;
-
-        const forceSource = this.forces.get(link.source.id)!;
-        const forceTarget = this.forces.get(link.target.id)!;
-
-        forceSource.x += forceX;
-        forceSource.y += forceY;
-        forceTarget.x -= forceX;
-        forceTarget.y -= forceY;
+      const dist = Math.hypot(dx, dy);
+      if (dist === 0) return;
+      const force = (dist * dist) / this.k;
+      const fx = (dx / dist) * force;
+      const fy = (dy / dist) * force;
+      const fs = this.forces.get(link.source.id);
+      const ft = this.forces.get(link.target.id);
+      if (fs && ft) {
+        fs.x += fx;
+        fs.y += fy;
+        ft.x -= fx;
+        ft.y -= fy;
       }
     });
   }
 
-  /**
-   * Update node positions based on calculated forces
-   */
-  private updatePositions(): void {
-    this.nodes.forEach((node) => {
-      if (node.fx === undefined || node.fy === undefined) {
-        const force = this.forces.get(node.id)!;
-        const forceMagnitude = Math.sqrt(force.x * force.x + force.y * force.y);
+  private calculateCenteringForces(strength = 0.1) {
+    const cx = this.width / 2,
+      cy = this.height / 2;
+    this.nodes.forEach((n) => {
+      const f = this.forces.get(n.id);
+      if (f) {
+        f.x += (cx - n.x) * strength;
+        f.y += (cy - n.y) * strength;
+      }
+    });
+  }
 
-        if (forceMagnitude > 0) {
-          node.x +=
-            (force.x / forceMagnitude) *
-            Math.min(forceMagnitude, this.temperature);
-          node.y +=
-            (force.y / forceMagnitude) *
-            Math.min(forceMagnitude, this.temperature);
+  private updatePositions() {
+    this.nodes.forEach((n) => {
+      if (n.fx == null && n.fy == null) {
+        const f = this.forces.get(n.id);
+        if (f) {
+          const mag = Math.hypot(f.x, f.y);
+          if (mag > 0) {
+            const step = Math.min(mag, this.temperature);
+            n.x += (f.x / mag) * step;
+            n.y += (f.y / mag) * step;
+          }
         }
-
-        // Keep nodes within bounds
-        node.x = Math.max(0, Math.min(this.width, node.x));
-        node.y = Math.max(0, Math.min(this.height, node.y));
       }
     });
   }
 
-  /**
-   * Run the force-directed layout algorithm
-   * @returns The updated nodes with new positions
-   */
   public run(): Node[] {
     for (let i = 0; i < this.iterations; i++) {
       this.calculateRepulsiveForces();
       this.calculateAttractiveForces();
+      this.calculateCenteringForces();
       this.updatePositions();
       this.temperature *= this.coolingFactor;
     }
