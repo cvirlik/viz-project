@@ -56,6 +56,7 @@ export const NetworkVisualization: React.FC = () => {
     }));
 
     const neighborMap = new Map<string, Set<string>>();
+
     links.forEach(({ source, target }) => {
       if (!neighborMap.has(source)) neighborMap.set(source, new Set());
       if (!neighborMap.has(target)) neighborMap.set(target, new Set());
@@ -63,12 +64,9 @@ export const NetworkVisualization: React.FC = () => {
       neighborMap.get(target)!.add(source);
     });
 
-    // Calculate node degrees
-    links.forEach((link) => {
-      const sourceNode = nodes.find((n) => n.id === link.source);
-      const targetNode = nodes.find((n) => n.id === link.target);
-      if (sourceNode) sourceNode.degree = (sourceNode.degree || 0) + 1;
-      if (targetNode) targetNode.degree = (targetNode.degree || 0) + 1;
+    // Set node degrees from neighbor map
+    nodes.forEach((node) => {
+      node.degree = neighborMap.get(node.id)?.size || 0;
     });
 
     // draw links

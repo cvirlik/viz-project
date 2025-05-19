@@ -25,7 +25,6 @@
   box-sizing: border-box;
 }
 
-
 .node text {
   pointer-events: none;
   font-size: 12px;
