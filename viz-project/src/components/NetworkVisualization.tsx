@@ -29,6 +29,8 @@ export const NetworkVisualization: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [positioned, setPositioned] = useState<NodeDatum[]>([]);
+  const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>();
 
   useEffect(() => {
     const svgEl = svgRef.current;
@@ -45,6 +47,7 @@ export const NetworkVisualization: React.FC = () => {
       .scaleExtent([0.1, 10])
       .on('zoom', ({ transform }) => g.attr('transform', transform));
     svg.call(zoomBehavior);
+    zoomBehaviorRef.current = zoomBehavior;
 
     // initial nodes and links
     const nodes: NodeDatum[] = historicalData.vertices.map((v) => ({
@@ -132,9 +135,7 @@ export const NetworkVisualization: React.FC = () => {
     );
     // cast to include displayX/displayY
     const positioned = layout.run() as NodeDatum[];
-
-    // const fisheyeRadius = Math.min(width, height) / 3;
-    // const fisheyeDistortion = 3;
+    setPositioned(positioned);
 
     function applyFisheye(focus: NodeDatum) {
       return;
@@ -210,9 +211,26 @@ export const NetworkVisualization: React.FC = () => {
   }, []);
 
   const handleResultClick = (nodeId: string) => {
-    throw new Error(
-      'Funkce onclick zatím není implementována NetworkVisualization.tsx - řádek 202 (přibližně)\n\n',
-    );
+    const svgEl = svgRef.current;
+    if (!svgEl || !zoomBehaviorRef.current) return;
+
+    const svg = d3.select(svgEl);
+    const width = svgEl.clientWidth;
+    const height = svgEl.clientHeight;
+    const node = positioned.find((n) => n.id === nodeId);
+    if (!node) return;
+
+    const current = d3.zoomTransform(svgEl);
+    const scale = current.k;
+    const tx = width / 2 - node.x * scale;
+    const ty = height / 2 - node.y * scale;
+    svg
+      .transition()
+      .duration(750)
+      .call(
+        zoomBehaviorRef.current.transform,
+        d3.zoomIdentity.translate(tx, ty).scale(scale),
+      );
   };
 
   return (
