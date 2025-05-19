@@ -6,130 +6,122 @@ import historicalData from '../data/historical-data.json';
 import { FruchtermanReingold } from '../layouts/FruchtermanReingold';
 import SearchResults from './SearchResults';
 
-// SimulationNode je nadtrida patrici D3. Do nasi custom class Node muzeme dat co chceme.
-// Datum je jejich ekvivalent ke slovu Data,
-// jenž znamená že to jsou data co se moc nemění, proto jsou dobré k vizualizaci.
-interface Node extends d3.SimulationNodeDatum {
+// Node with optional fisheye display coordinates
+interface NodeDatum extends d3.SimulationNodeDatum {
   id: string;
   name: string;
   group: number;
+  x: number;
+  y: number;
+  fx?: number | null;
+  fy?: number | null;
+  displayX?: number;
+  displayY?: number;
 }
 
-interface Link {
+interface LinkData {
   source: string;
   target: string;
   value: number;
 }
 
-interface GraphData {
-  nodes: Node[];
-  links: Link[];
-}
-
-const NetworkVisualization: React.FC = () => {
-  // Vizualizace se bude renderovat do tohoto SVG elementu.
+export const NetworkVisualization: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
-  // Tooltip je ten dialog co se objevi pri najeti kurzorem na node.
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (!svgRef.current) return;
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+    const width = svgEl.clientWidth;
+    const height = svgEl.clientHeight;
+    const svg = d3.select(svgEl).attr('width', width).attr('height', height);
+    svg.selectAll('*').remove();
 
-    // Clear any existing SVG content
-    d3.select(svgRef.current).selectAll('*').remove();
-
-    // Set up the SVG dimensions
-    const width = svgRef.current.clientWidth;
-    const height = svgRef.current.clientHeight;
-
-    // Create the SVG container
-    const svg = d3
-      .select(svgRef.current)
-      .attr('width', width)
-      .attr('height', height);
-
-    // Create a group for the visualization
     const g = svg.append('g');
 
-    // Transform the data into the correct format
-    const nodes = historicalData.vertices.map((vertex) => ({
-      id: vertex.id.toString(),
-      name: vertex.title,
-      group: vertex.archetype,
-      x: Math.random() * width, // Initial random positions
+    const zoomBehavior = d3
+      .zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.1, 10])
+      .on('zoom', ({ transform }) => g.attr('transform', transform));
+    svg.call(zoomBehavior);
+
+    // initial nodes and links
+    const nodes: NodeDatum[] = historicalData.vertices.map((v) => ({
+      id: String(v.id),
+      name: v.title,
+      group: v.archetype,
+      x: Math.random() * width,
       y: Math.random() * height,
     }));
-    const links = historicalData.edges.map((edge) => ({
-      source: edge.from.toString(),
-      target: edge.to.toString(),
+    const links: LinkData[] = historicalData.edges.map((e) => ({
+      source: String(e.from),
+      target: String(e.to),
       value: 1,
     }));
 
-    const data: GraphData = { nodes, links };
-
-    // Create the links
-    const link = g
+    // draw links
+    const linkSel = g
       .append('g')
       .selectAll('line')
-      .data(data.links)
+      .data(links)
       .enter()
       .append('line')
       .attr('class', 'link')
       .attr('stroke-width', (d) => Math.sqrt(d.value));
 
-    // Create the nodes
-    const node = g
+    // draw nodes
+    const nodeSel = g
       .append('g')
-      .selectAll('g')
-      .data(data.nodes)
+      .selectAll<SVGGElement, NodeDatum>('g')
+      .data(nodes)
       .enter()
       .append('g')
       .attr('class', 'node')
       .call(
         d3
-          .drag<any, any>()
-          .on('start', dragstarted)
-          .on('drag', dragged)
-          .on('end', dragended),
+          .drag<SVGGElement, NodeDatum>()
+          .on('start', onDragStart)
+          .on('drag', onDrag)
+          .on('end', onDragEnd),
       );
-
-    // Add circles to nodes
-    node
+    nodeSel
       .append('circle')
       .attr('r', 30)
       .attr('fill', (d) => d3.schemeCategory10[d.group % 10]);
-
-    // Add labels to nodes
-    node
+    nodeSel
       .append('text')
       .text((d) => d.name)
       .attr('x', 8)
       .attr('y', 3);
 
-    // Add tooltips
-    node
+    nodeSel
       .on('mouseover', (event, d) => {
-        if (!tooltipRef.current) return;
-        const tooltip = d3.select(tooltipRef.current);
-        tooltip
+        const ttEl = tooltipRef.current;
+        if (!ttEl) return;
+        d3.select(ttEl)
           .style('opacity', 1)
           .html(`<strong>${d.name}</strong><br/>Group: ${d.group}`)
-          .style('left', event.pageX + 10 + 'px')
-          .style('top', event.pageY - 28 + 'px');
+          .style('left', `${event.pageX + 10}px`)
+          .style('top', `${event.pageY - 28}px`);
       })
       .on('mouseout', () => {
-        if (!tooltipRef.current) return;
-        d3.select(tooltipRef.current).style('opacity', 0);
+        const ttEl = tooltipRef.current;
+        if (ttEl) d3.select(ttEl).style('opacity', 0);
       });
 
-    // Initialize Fruchterman-Reingold layout
+    // run layout (returns original array mutated)
     const layout = new FruchtermanReingold(
       nodes,
-      links.map((link) => ({
-        source: nodes.find((n) => n.id === link.source)!,
-        target: nodes.find((n) => n.id === link.target)!,
-      })),
+      links
+        .map((l) => {
+          const s = nodes.find((n) => n.id === l.source);
+          const t = nodes.find((n) => n.id === l.target);
+          return s && t ? { source: s, target: t } : null;
+        })
+        .filter((x): x is { source: NodeDatum; target: NodeDatum } =>
+          Boolean(x),
+        ),
       {
         width,
         height,
@@ -138,65 +130,84 @@ const NetworkVisualization: React.FC = () => {
         coolingFactor: 0.95,
       },
     );
+    // cast to include displayX/displayY
+    const positioned = layout.run() as NodeDatum[];
 
-    // Run the layout algorithm
-    const updatedNodes = layout.run();
+    // const fisheyeRadius = Math.min(width, height) / 3;
+    // const fisheyeDistortion = 3;
 
-    // Update the visualization with the new positions
-    function updatePositions() {
-      link
-        .attr('x1', (d: any) => {
-          const source = updatedNodes.find((n) => n.id === d.source);
-          return source?.x || 0;
+    function applyFisheye(focus: NodeDatum) {
+      return;
+    }
+
+    function updateDisplay() {
+      linkSel
+        .attr('x1', (d) => {
+          const n = positioned.find((n) => n.id === d.source);
+          return n ? (n.displayX ?? n.x) : 0;
         })
-        .attr('y1', (d: any) => {
-          const source = updatedNodes.find((n) => n.id === d.source);
-          return source?.y || 0;
+        .attr('y1', (d) => {
+          const n = positioned.find((n) => n.id === d.source);
+          return n ? (n.displayY ?? n.y) : 0;
         })
-        .attr('x2', (d: any) => {
-          const target = updatedNodes.find((n) => n.id === d.target);
-          return target?.x || 0;
+        .attr('x2', (d) => {
+          const n = positioned.find((n) => n.id === d.target);
+          return n ? (n.displayX ?? n.x) : 0;
         })
-        .attr('y2', (d: any) => {
-          const target = updatedNodes.find((n) => n.id === d.target);
-          return target?.y || 0;
+        .attr('y2', (d) => {
+          const n = positioned.find((n) => n.id === d.target);
+          return n ? (n.displayY ?? n.y) : 0;
         });
-
-      node.attr('transform', (d: any) => {
-        const node = updatedNodes.find((n) => n.id === d.id);
-        return `translate(${node?.x || 0},${node?.y || 0})`;
+      nodeSel.attr('transform', (d) => {
+        const n = positioned.find((n) => n.id === d.id);
+        const x = n ? (n.displayX ?? n.x) : d.x;
+        const y = n ? (n.displayY ?? n.y) : d.y;
+        return `translate(${x},${y})`;
       });
     }
 
-    // Initial position update
-    updatePositions();
+    nodeSel.on('click', (event, d) => {
+      const current = d3.zoomTransform(svgEl);
+      const scale = current.k;
+      const tx = width / 2 - d.x * scale;
+      const ty = height / 2 - d.y * scale;
+      svg
+        .transition()
+        .duration(750)
+        .call(
+          zoomBehavior.transform,
+          d3.zoomIdentity.translate(tx, ty).scale(scale),
+        );
+      applyFisheye(d);
+    });
 
-    // Drag functions
-    function dragstarted(event: any) {
-      const node = updatedNodes.find((n) => n.id === event.subject.id);
-      if (node) {
-        node.fx = node.x;
-        node.fy = node.y;
-      }
-    }
+    updateDisplay();
 
-    function dragged(event: any) {
-      const node = updatedNodes.find((n) => n.id === event.subject.id);
-      if (node) {
-        node.fx = event.x;
-        node.fy = event.y;
-        updatePositions();
-      }
+    function onDragStart(
+      event: d3.D3DragEvent<SVGGElement, NodeDatum, NodeDatum>,
+    ) {
+      const subject = event.subject;
+      subject.fx = subject.x;
+      subject.fy = subject.y;
     }
-
-    function dragended(event: any) {
-      const node = updatedNodes.find((n) => n.id === event.subject.id);
-      if (node) {
-        node.fx = null;
-        node.fy = null;
-      }
+    function onDrag(event: d3.D3DragEvent<SVGGElement, NodeDatum, NodeDatum>) {
+      const subject = event.subject;
+      subject.fx = event.x;
+      subject.fy = event.y;
+      positioned.forEach((n) => {
+        delete n.displayX;
+        delete n.displayY;
+      });
+      updateDisplay();
     }
-  });
+    function onDragEnd(
+      event: d3.D3DragEvent<SVGElement, NodeDatum, NodeDatum>,
+    ) {
+      const subject = event.subject;
+      subject.fx = null;
+      subject.fy = null;
+    }
+  }, []);
 
   const handleResultClick = (nodeId: string) => {
     throw new Error(
@@ -207,8 +218,7 @@ const NetworkVisualization: React.FC = () => {
   return (
     <div id="main-container">
       <div id="visualization-container">
-        {/* D3 vizualizace */}
-        <svg id="visualization" ref={svgRef}></svg>
+        <svg id="visualization" ref={svgRef} />
       </div>
       {/* Pravy sidebar s vyhledavanim */}
       <div id="sidebar">
@@ -246,5 +256,3 @@ const NetworkVisualization: React.FC = () => {
     </div>
   );
 };
-
-export default NetworkVisualization;
