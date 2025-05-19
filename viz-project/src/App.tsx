@@ -1,7 +1,7 @@
 import React from 'react';
+import './App.css';
 import { ThemeProvider, createTheme } from '@mui/material';
 import { NetworkVisualization } from './components/NetworkVisualization';
-import './App.css';
 
 const theme = createTheme({
   palette: {

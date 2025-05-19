@@ -12,7 +12,8 @@
   margin-bottom: 8px;
 }
 
-.min-date, .max-date {
+.min-date,
+.max-date {
   color: #95a5a6;
   font-size: 12px;
 }
