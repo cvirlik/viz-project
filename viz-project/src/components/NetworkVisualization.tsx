@@ -6,6 +6,7 @@ import historicalData from '../data/historical-data.json';
 import { FruchtermanReingold } from '../layouts/FruchtermanReingold';
 import SearchResults from './SearchResults';
 import { NodeDatum } from '../types/NodeDatum';
+import { calculateDOI } from '../utils/doiCalculator';
 
 interface LinkData {
   source: string;
@@ -44,12 +45,21 @@ export const NetworkVisualization: React.FC = () => {
       group: v.archetype,
       x: Math.random() * width,
       y: Math.random() * height,
+      degree: 0,
     }));
     const links: LinkData[] = historicalData.edges.map((e) => ({
       source: String(e.from),
       target: String(e.to),
       value: 1,
     }));
+
+    // Calculate node degrees
+    links.forEach((link) => {
+      const sourceNode = nodes.find((n) => n.id === link.source);
+      const targetNode = nodes.find((n) => n.id === link.target);
+      if (sourceNode) sourceNode.degree = (sourceNode.degree || 0) + 1;
+      if (targetNode) targetNode.degree = (targetNode.degree || 0) + 1;
+    });
 
     // draw links
     const linkSel = g
@@ -93,7 +103,7 @@ export const NetworkVisualization: React.FC = () => {
       );
     nodeSel
       .append('circle')
-      .attr('r', 30)
+      .attr('r', (d) => calculateDOI(d, nodes))
       .attr('fill', (d) => d3.schemeCategory10[d.group % 10]);
     nodeSel
       .append('text')
