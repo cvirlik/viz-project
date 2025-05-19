@@ -5,19 +5,7 @@ import '../styles/SearchBar.css';
 import historicalData from '../data/historical-data.json';
 import { FruchtermanReingold } from '../layouts/FruchtermanReingold';
 import SearchResults from './SearchResults';
-
-// Node with optional fisheye display coordinates
-interface NodeDatum extends d3.SimulationNodeDatum {
-  id: string;
-  name: string;
-  group: number;
-  x: number;
-  y: number;
-  fx?: number | null;
-  fy?: number | null;
-  displayX?: number;
-  displayY?: number;
-}
+import { NodeDatum } from '../types/NodeDatum';
 
 interface LinkData {
   source: string;
