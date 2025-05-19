@@ -8,12 +8,14 @@ interface SearchResultsProps {
     min: number;
     max: number;
   };
+  selectedArchetypes: number[];
   onResultClick: (nodeId: string) => void;
 }
 
 const SearchResults: React.FC<SearchResultsProps> = ({
   searchQuery,
   dateRange,
+  selectedArchetypes,
   onResultClick,
 }) => {
   const filteredResults = historicalData.vertices
@@ -33,9 +35,12 @@ const SearchResults: React.FC<SearchResultsProps> = ({
 
       const matchesDateRange =
         beginDate >= dateRange.min && endDate <= dateRange.max;
+
+      // Archetype filter
+      const matchesArchetype = selectedArchetypes.includes(vertex.archetype);
       // OR stačí. Nemusí pasovat title i datum.
       // Spíš pak zvětšit nodes, které vyhovují oběma filterům.
-      return matchesSearch && matchesDateRange;
+      return matchesSearch && matchesDateRange && matchesArchetype;
     })
     .map((vertex) => ({
       id: String(vertex.id),

@@ -426,6 +426,7 @@ export const NetworkVisualization: React.FC = () => {
         <SearchResults
           searchQuery={searchQuery}
           dateRange={dateRange}
+          selectedArchetypes={selectedArchetypes}
           onResultClick={handleResultClick}
         />
       </div>
