@@ -9,6 +9,7 @@ import SearchResults from './SearchResults';
 import { DateRangeSlider } from './DateRangeSlider';
 import { NodeDatum } from '../types/NodeDatum';
 import { calculateDOI } from '../utils/doiCalculator';
+import ArchetypeFilter from './ArchetypeFilter';
 
 interface LinkData {
   source: string;
@@ -24,10 +25,12 @@ export const NetworkVisualization: React.FC = () => {
   const [positioned, setPositioned] = useState<NodeDatum[]>([]);
   const [dateRange, setDateRange] = useState<{ min: number; max: number }>({
     min: new Date('1910-01-01').getTime(),
-
     max: new Date('2024-01-01').getTime(),
   });
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>();
+  const [selectedArchetypes, setSelectedArchetypes] = useState<number[]>(
+    historicalData.vertexArchetypes.map((_, index) => index),
+  );
 
   const handleDateRangeChange = (minDate: number, maxDate: number) => {
     setDateRange({ min: minDate, max: maxDate });
@@ -414,6 +417,10 @@ export const NetworkVisualization: React.FC = () => {
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </div>
+          <ArchetypeFilter
+            selectedArchetypes={selectedArchetypes}
+            onArchetypeChange={setSelectedArchetypes}
+          />
           <DateRangeSlider onRangeChange={handleDateRangeChange} />
         </div>
         <SearchResults
@@ -426,3 +433,5 @@ export const NetworkVisualization: React.FC = () => {
     </div>
   );
 };
+
+export default NetworkVisualization;

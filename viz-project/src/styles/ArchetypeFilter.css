@@ -1,0 +1,18 @@
+.archetype-filter {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  flex-wrap: wrap;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  margin: 8px 0;
+}
+
+.archetype-chip {
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.archetype-chip:hover {
+  transform: scale(1.05);
+}
