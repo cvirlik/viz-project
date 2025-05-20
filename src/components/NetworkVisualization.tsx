@@ -9,7 +9,6 @@ import { initSvg } from '../utils/svg';
 import { hideNonAdjacent, makeGradient, showNonAdjacent } from '../utils/effects';
 import { Sidebar } from './Sidebar';
 import { DOIProvider, useDOI } from '../providers/doi';
-import historicalData from '../data/historical-data.json';
 
 const Body: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -185,30 +184,13 @@ const Body: React.FC = () => {
       .on('mouseover', (event, d) => {
         const ttEl = tooltipRef.current;
         if (ttEl) {
-          const vertex = historicalData.vertices.find(v => String(v.id) === d.id);
-          const archetype = historicalData.vertexArchetypes[d.group];
-
-          const tooltipContent = `
-            <div class="tooltip-content">
-              <h3>${d.name}</h3>
-              <div class="tooltip-details">
-                <p><strong>Type:</strong> ${archetype.name}</p>
-                ${vertex?.attributes['0'] ? `<p><strong>Description:</strong> ${vertex.attributes['0']}</p>` : ''}
-                ${vertex?.attributes['1'] ? `<p><strong>Start Date:</strong> ${new Date(vertex.attributes['1']).toLocaleDateString()}</p>` : ''}
-                ${vertex?.attributes['2'] ? `<p><strong>End Date:</strong> ${new Date(vertex.attributes['2']).toLocaleDateString()}</p>` : ''}
-                <p><strong>Degree:</strong> ${d.degree || 0}</p>
-                <p><strong>DOI:</strong> ${(d.doi || 0).toFixed(2)}</p>
-              </div>
-            </div>
-          `;
-
           d3.select(ttEl)
             .style('opacity', 1)
-            .html(tooltipContent)
+            .html(`<strong>${d.name}</strong><br/>Group: ${d.group}`)
             .style('left', `${event.pageX + 10}px`)
             .style('top', `${event.pageY - 28}px`);
         }
-        setFocusNode(d);
+        setFocusNode(d); // TODO: Later maybe change to click
         hideNonAdjacent([d], neighborMap, nodeController, linkController, edgeController);
       })
       .on('mouseout', () => {
