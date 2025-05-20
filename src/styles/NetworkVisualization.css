@@ -36,10 +36,6 @@
   pointer-events: none;
 }
 
-.node circle {
-  fill: red;
-}
-
 .tooltip {
   position: absolute;
   padding: 8px;
