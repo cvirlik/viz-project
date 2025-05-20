@@ -34,6 +34,61 @@ export const NetworkVisualization: React.FC = () => {
     historicalData.vertexArchetypes.map((_, index) => index),
   );
 
+  // Helper function to convert hex to HSL
+  const hexToHSL = (hex: string) => {
+    // Remove the hash if it exists
+    hex = hex.replace('#', '');
+
+    // Convert hex to RGB
+    const r = parseInt(hex.substring(0, 2), 16) / 255;
+    const g = parseInt(hex.substring(2, 4), 16) / 255;
+    const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+
+    let h = 0;
+    let s = 0;
+    const l = (max + min) / 2;
+
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+      switch (max) {
+        case r:
+          h = (g - b) / d + (g < b ? 6 : 0);
+          break;
+        case g:
+          h = (b - r) / d + 2;
+          break;
+        case b:
+          h = (r - g) / d + 4;
+          break;
+      }
+
+      h /= 6;
+    }
+
+    return { h: h * 360, s: s * 100, l: l * 100 };
+  };
+
+  // Helper function to convert HSL to hex
+  const hslToHex = (h: number, s: number, l: number) => {
+    l /= 100;
+    const a = (s * Math.min(l, 1 - l)) / 100;
+
+    const f = (n: number) => {
+      const k = (n + h / 30) % 12;
+      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+      return Math.round(255 * color)
+        .toString(16)
+        .padStart(2, '0');
+    };
+
+    return `#${f(0)}${f(8)}${f(4)}`;
+  };
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
@@ -179,7 +234,7 @@ export const NetworkVisualization: React.FC = () => {
       .append('g')
       .attr('class', 'node');
 
-    // Calculate DOI for each node
+    // Calculate initial DOI for each node
     const doiParams = {
       searchQuery,
       selectedArchetypes,
@@ -189,61 +244,6 @@ export const NetworkVisualization: React.FC = () => {
     nodes.forEach((node) => {
       node.doi = calculateDOI(node, nodes, doiParams);
     });
-
-    // Helper function to convert hex to HSL
-    const hexToHSL = (hex: string) => {
-      // Remove the hash if it exists
-      hex = hex.replace('#', '');
-
-      // Convert hex to RGB
-      const r = parseInt(hex.substring(0, 2), 16) / 255;
-      const g = parseInt(hex.substring(2, 4), 16) / 255;
-      const b = parseInt(hex.substring(4, 6), 16) / 255;
-
-      const max = Math.max(r, g, b);
-      const min = Math.min(r, g, b);
-
-      let h = 0;
-      let s = 0;
-      const l = (max + min) / 2;
-
-      if (max !== min) {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
-        switch (max) {
-          case r:
-            h = (g - b) / d + (g < b ? 6 : 0);
-            break;
-          case g:
-            h = (b - r) / d + 2;
-            break;
-          case b:
-            h = (r - g) / d + 4;
-            break;
-        }
-
-        h /= 6;
-      }
-
-      return { h: h * 360, s: s * 100, l: l * 100 };
-    };
-
-    // Helper function to convert HSL to hex
-    const hslToHex = (h: number, s: number, l: number) => {
-      l /= 100;
-      const a = (s * Math.min(l, 1 - l)) / 100;
-
-      const f = (n: number) => {
-        const k = (n + h / 30) % 12;
-        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-        return Math.round(255 * color)
-          .toString(16)
-          .padStart(2, '0');
-      };
-
-      return `#${f(0)}${f(8)}${f(4)}`;
-    };
 
     nodeSel
       .append('circle')
@@ -294,12 +294,14 @@ export const NetworkVisualization: React.FC = () => {
     const getNode = (id: string) => {
       return nodes.find((node) => node.id === id);
     };
+
     const getEndNodes = (line: LinkData) => {
       return {
         s: nodes.find((node) => node.id === line.source),
         t: nodes.find((node) => node.id === line.target),
       };
     };
+
     const getLinkAction = (link: LinkData) => {
       const transform = d3.zoomTransform(svgEl);
 
@@ -349,27 +351,27 @@ export const NetworkVisualization: React.FC = () => {
       linkSel
         .attr('x1', (d) => {
           const n = positioned.find((n) => n.id === d.source);
-          return n ? (n.displayX ?? n.x) : 0;
+          return n ? n.x : 0;
         })
         .attr('y1', (d) => {
           const n = positioned.find((n) => n.id === d.source);
-          return n ? (n.displayY ?? n.y) : 0;
+          return n ? n.y : 0;
         })
         .attr('x2', (d) => {
           const n = positioned.find((n) => n.id === d.target);
-          return n ? (n.displayX ?? n.x) : 0;
+          return n ? n.x : 0;
         })
         .attr('y2', (d) => {
           const n = positioned.find((n) => n.id === d.target);
-          return n ? (n.displayY ?? n.y) : 0;
+          return n ? n.y : 0;
         });
 
       edgeLabels.attr('transform', (d) => {
         const { s, t } = getEndNodes(d);
-        const sx = s ? (s.displayX ?? s.x) : 0;
-        const sy = s ? (s.displayY ?? s.y) : 0;
-        const tx = t ? (t.displayX ?? t.x) : 0;
-        const ty = t ? (t.displayY ?? t.y) : 0;
+        const sx = s ? s.x : 0;
+        const sy = s ? s.y : 0;
+        const tx = t ? t.x : 0;
+        const ty = t ? t.y : 0;
         return `translate(${(sx + tx) / 2},${(sy + ty) / 2})`;
       });
 
@@ -386,12 +388,14 @@ export const NetworkVisualization: React.FC = () => {
       });
 
       nodeSel.attr('transform', (d) => {
-        const x = d.displayX ?? d.x;
-        const y = d.displayY ?? d.y;
-        return `translate(${x},${y})`;
+        const n = positioned.find((n) => n.id === d.id);
+        return n ? `translate(${n.x},${n.y})` : 'translate(0,0)';
       });
     }
 
+    updateDisplay();
+
+    // Add event handlers
     nodeSel
       .on('mouseover', (event, d) => {
         const ttEl = tooltipRef.current;
@@ -463,49 +467,37 @@ export const NetworkVisualization: React.FC = () => {
           .attr('stroke-opacity', 0.6);
         showNonadjacent();
       });
+  }, []); // Empty dependency array - only run once for initial layout
 
-    updateDisplay();
+  // Separate useEffect for color updates
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl || !positioned.length) return;
 
-    // Update node opacity when filters change
-    const onNodeDoiChange = () => {
-      const doiParams = {
-        searchQuery,
-        selectedArchetypes,
-        dateRange,
-      };
+    const g = d3.select(svgEl).select('g');
+    const nodeSel = g.selectAll<SVGGElement, NodeDatum>('g.node');
 
-      nodes.forEach((node) => {
-        node.doi = calculateDOI(node, nodes, doiParams);
+    // Update DOI values
+    const doiParams = {
+      searchQuery,
+      selectedArchetypes,
+      dateRange,
+    };
+
+    positioned.forEach((node) => {
+      node.doi = calculateDOI(node, positioned, doiParams);
+    });
+
+    // Update colors
+    nodeSel
+      .selectAll<SVGCircleElement, NodeDatum>('circle')
+      .attr('fill', (d) => {
+        const baseColor = d3.schemeCategory10[d.group % 10];
+        const { h, s } = hexToHSL(baseColor);
+        const l = 90 - (d.doi || 0) * 60;
+        return hslToHex(h, s, l);
       });
-
-      nodeSel
-        .selectAll<SVGCircleElement, NodeDatum>('circle')
-        .attr('fill', (d) => {
-          const baseColor = d3.schemeCategory10[d.group % 10];
-          const { h, s } = hexToHSL(baseColor);
-          const l = 90 - (d.doi || 0) * 60; // Scale DOI from 90% to 30% lightness
-          return hslToHex(h, s, l);
-        });
-    };
-
-    // Add updateNodeOpacity to the component's state updates
-    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setSearchQuery(e.target.value);
-      onNodeDoiChange();
-    };
-
-    const handleArchetypeChange = (newArchetypes: number[]) => {
-      setSelectedArchetypes(newArchetypes);
-      onNodeDoiChange();
-    };
-
-    const handleDateRangeChange = (minDate: number, maxDate: number) => {
-      setDateRange({ min: minDate, max: maxDate });
-      onNodeDoiChange();
-    };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, selectedArchetypes, dateRange]); // Add dependencies to useEffect
+  }, [searchQuery, selectedArchetypes, dateRange, positioned]); // Only update colors when filters change
 
   return (
     <div id="main-container">
