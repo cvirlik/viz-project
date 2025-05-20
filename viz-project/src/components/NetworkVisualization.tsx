@@ -8,9 +8,9 @@ import { FruchtermanReingold } from '../layouts/FruchtermanReingold';
 import SearchResults from './SearchResults';
 import { DateRangeSlider } from './DateRangeSlider';
 import { NodeDatum } from '../types/NodeDatum';
-import { calculateNodeRadius } from '../utils/utils';
+import { calculateNodeRadius } from '../utils/visual';
 import ArchetypeFilter from './ArchetypeFilter';
-import { calculateDOI } from '../utils/doiCalculator';
+import { calculateDOI } from '../utils/doi-calculator';
 
 interface LinkData {
   source: string;
@@ -34,6 +34,12 @@ export const NetworkVisualization: React.FC = () => {
   const [selectedArchetypes, setSelectedArchetypes] = useState<number[]>(
     historicalData.vertexArchetypes.map((_, index) => index),
   );
+
+  // dynamic layout refs
+  const layoutRef = useRef<FruchtermanReingold | null>(null);
+  const updateDisplayRef = useRef<() => void>();
+  const intervalRef = useRef<number>();
+  const [isRunning, setIsRunning] = useState(false);
 
   // Helper function to convert hex to HSL
   const hexToHSL = (hex: string) => {
@@ -137,9 +143,6 @@ export const NetworkVisualization: React.FC = () => {
     svg.selectAll('*').remove();
 
     const g = svg.append('g');
-
-    const MIN_SCALE_FOR_SMALL = 0.9;
-    const DOI_THRESHOLD = 40;
 
     const zoomBehavior = d3
       .zoom<SVGSVGElement, unknown>()
@@ -260,10 +263,27 @@ export const NetworkVisualization: React.FC = () => {
 
     nodeSel
       .append('text')
-      .text((d) => d.name)
-      .attr('x', 8)
-      .attr('y', 3)
-      .attr('opacity', 1);
+      .text((d) =>
+        d.name
+          .split(' ')
+          .map((part) =>
+            part && part.length > 3
+              ? part[0]
+                  .split('(')[0]
+                  .replaceAll(/[^a-zA-Z0-9]/g, '')
+                  .toUpperCase()
+              : part || '',
+          )
+          .join(''),
+      )
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'middle')
+      .attr('opacity', 1)
+      .style('font-size', '15px')
+      .attr('font-weight', 'bold')
+      .attr('fill', 'white');
 
     const hideNonadjacent = (nodes: NodeDatum[]) => {
       const nbrs = new Set();
@@ -275,22 +295,23 @@ export const NetworkVisualization: React.FC = () => {
         nbrs.add(d.id);
       });
 
-      /** Temporarily disabled hover opacity change
-      
-      nodeSel.style('opacity', (nd) => (nbrs.has(nd.id) ? 1 : 0.1));
+      //Temporarily disabled hover opacity change
+
+      const LIGHT_OPACITY = 0.3;
+
+      nodeSel.style('opacity', (nd) => (nbrs.has(nd.id) ? 1 : LIGHT_OPACITY));
       linkSel.style('opacity', (lk) =>
-        nbrs.has(lk.source) && nbrs.has(lk.target) ? 1 : 0.1,
+        nbrs.has(lk.source) && nbrs.has(lk.target) ? 1 : LIGHT_OPACITY,
       );
       edgeLabels.style('opacity', (el) =>
-        nbrs.has(el.source) && nbrs.has(el.target) ? 1 : 0.1,
-      );*/
+        nbrs.has(el.source) && nbrs.has(el.target) ? 1 : LIGHT_OPACITY,
+      );
     };
     const showNonadjacent = () => {
-      /** Temporarily disabled hover opacity change
+      //Temporarily disabled hover opacity change
       nodeSel.style('opacity', 1);
       linkSel.style('opacity', 1);
       edgeLabels.style('opacity', 1);
-      */
     };
 
     const getNode = (id: string) => {
@@ -340,12 +361,12 @@ export const NetworkVisualization: React.FC = () => {
       {
         width,
         height,
-        iterations: 500,
+        iterations: 1,
         temperature: width / 4,
         coolingFactor: 0.95,
       },
     );
-
+    layoutRef.current = layout;
     const positioned = layout.run() as NodeDatum[];
     setPositioned(positioned);
 
@@ -394,7 +415,7 @@ export const NetworkVisualization: React.FC = () => {
         return n ? `translate(${n.x},${n.y})` : 'translate(0,0)';
       });
     }
-
+    updateDisplayRef.current = updateDisplay;
     updateDisplay();
 
     // Add event handlers
@@ -471,6 +492,11 @@ export const NetworkVisualization: React.FC = () => {
           .attr('stroke-opacity', 0.6);
         showNonadjacent();
       });
+
+    return () => {
+      clearInterval(intervalRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run once for initial layout
 
   // Separate useEffect for color updates
@@ -503,6 +529,20 @@ export const NetworkVisualization: React.FC = () => {
         return hslToHex(h, s, l);
       });
   }, [searchQuery, selectedArchetypes, dateRange, positioned, focusNode]); // Add focusNode to dependencies
+
+  useEffect(() => {
+    if (isRunning) {
+      intervalRef.current = window.setInterval(() => {
+        if (layoutRef.current && updateDisplayRef.current) {
+          layoutRef.current.step();
+          updateDisplayRef.current();
+        }
+      }, 50);
+    } else {
+      clearInterval(intervalRef.current);
+    }
+    return () => clearInterval(intervalRef.current);
+  }, [isRunning]);
 
   return (
     <div id="main-container">
@@ -540,6 +580,13 @@ export const NetworkVisualization: React.FC = () => {
           />
           <DateRangeSlider onRangeChange={handleDateRangeChange} />
         </div>
+        <button
+          onClick={() => setIsRunning(!isRunning)}
+          className="play-pause-btn"
+        >
+          {isRunning ? 'Pause' : 'Play'}
+        </button>
+
         <SearchResults
           searchQuery={searchQuery}
           dateRange={dateRange}

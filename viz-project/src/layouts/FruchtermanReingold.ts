@@ -1,5 +1,4 @@
 import { NodeDatum } from '../types/NodeDatum';
-import { calculateDOI } from '../utils/utils';
 
 interface Point {
   x: number;
@@ -115,13 +114,17 @@ export class FruchtermanReingold {
     });
   }
 
+  public step(): void {
+    this.calculateRepulsiveForces();
+    this.calculateAttractiveForces();
+    this.calculateCenteringForces();
+    this.updatePositions();
+    this.temperature *= this.coolingFactor;
+  }
+
   public run(): NodeDatum[] {
     for (let i = 0; i < this.iterations; i++) {
-      this.calculateRepulsiveForces();
-      this.calculateAttractiveForces();
-      this.calculateCenteringForces();
-      this.updatePositions();
-      this.temperature *= this.coolingFactor;
+      this.step();
     }
     return this.nodes;
   }

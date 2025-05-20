@@ -18,15 +18,3 @@ export const calculateNodeRadius = (node: NodeDatum, allNodes: NodeDatum[]) => {
   );
   return Math.min(baseSize + normalizedDegree * (maxSize - baseSize), maxSize);
 };
-
-export const calculateDOI = (node: NodeDatum, allNodes: NodeDatum[]) => {
-  const maxDegree = Math.max(...allNodes.map((n) => n.degree || 0));
-  const minDegree = Math.min(...allNodes.map((n) => n.degree || 0));
-
-  // Normalize degree between 0 and 1
-  const normalizedDegree =
-    (node.degree || 0 - minDegree) / (maxDegree - minDegree);
-
-  // Scale size between baseSize and maxSize
-  return normalizedDegree;
-};
