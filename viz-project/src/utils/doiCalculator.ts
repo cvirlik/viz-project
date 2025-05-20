@@ -45,9 +45,9 @@ export const calculateDOI = (
 
   // Combine all factors with weights
   const weights = {
-    degree: 0.3, // Structural importance
-    search: 0.3, // Search relevance
-    archetype: 0.2, // Archetype selection
+    degree: 0.1, // Structural importance
+    search: 0.2, // Search relevance
+    archetype: 0.5, // Archetype selection
     date: 0.2, // Date relevance
   };
 
