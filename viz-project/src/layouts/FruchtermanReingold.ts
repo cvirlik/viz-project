@@ -1,17 +1,13 @@
+import { NodeDatum } from '../types/NodeDatum';
+import { calculateDOI } from '../utils/utils';
+
 interface Point {
   x: number;
   y: number;
 }
-interface Node {
-  id: string;
-  x: number;
-  y: number;
-  fx?: number | null;
-  fy?: number | null;
-}
 interface Link {
-  source: Node;
-  target: Node;
+  source: NodeDatum;
+  target: NodeDatum;
 }
 interface Options {
   width: number;
@@ -29,11 +25,11 @@ export class FruchtermanReingold {
   private k: number;
   private temperature: number;
   private coolingFactor: number;
-  private nodes: Node[];
+  private nodes: NodeDatum[];
   private links: Link[];
   private forces = new Map<string, Point>();
 
-  constructor(nodes: Node[], links: Link[], options: Options) {
+  constructor(nodes: NodeDatum[], links: Link[], options: Options) {
     this.nodes = nodes;
     this.links = links;
     this.width = options.width;
@@ -119,7 +115,7 @@ export class FruchtermanReingold {
     });
   }
 
-  public run(): Node[] {
+  public run(): NodeDatum[] {
     for (let i = 0; i < this.iterations; i++) {
       this.calculateRepulsiveForces();
       this.calculateAttractiveForces();

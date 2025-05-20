@@ -82,10 +82,23 @@ export const NetworkVisualization: React.FC = () => {
 
     const g = svg.append('g');
 
+    const MIN_SCALE_FOR_SMALL = 0.9;
+    const DOI_THRESHOLD = 40;
+
     const zoomBehavior = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 10])
-      .on('zoom', ({ transform }) => g.attr('transform', transform));
+      .on('zoom', ({ transform }) => {
+        g.attr('transform', transform);
+        // const k = d3.zoomTransform(svgEl).k;
+        // g.selectAll<SVGGElement, NodeDatum>('g.node')
+        //   .select<SVGTextElement>('text')
+        //   .style('display', (d) =>
+        //     calculateDOI(d, nodes) >= DOI_THRESHOLD || k >= MIN_SCALE_FOR_SMALL
+        //       ? 'block'
+        //       : 'none',
+        //   );
+      });
     svg.call(zoomBehavior);
     zoomBehaviorRef.current = zoomBehavior;
 
@@ -98,7 +111,6 @@ export const NetworkVisualization: React.FC = () => {
       y: Math.random() * height,
       degree: 0,
     }));
-
     const links: LinkData[] = historicalData.edges.map((e) => ({
       source: String(e.from),
       target: String(e.to),
@@ -107,7 +119,6 @@ export const NetworkVisualization: React.FC = () => {
     }));
 
     const neighborMap = new Map<string, Set<string>>();
-
     links.forEach(({ source, target }) => {
       let srcSet = neighborMap.get(source);
       if (!srcSet) {
@@ -123,7 +134,6 @@ export const NetworkVisualization: React.FC = () => {
       }
       tgtSet.add(source);
     });
-
     nodes.forEach((node) => {
       node.degree = neighborMap.get(node.id)?.size || 0;
     });
@@ -140,11 +150,20 @@ export const NetworkVisualization: React.FC = () => {
 
     const edgeLabels = g
       .append('g')
-      .selectAll('text')
+      .selectAll<SVGGElement, LinkData>('g.edge-label-group')
       .data(links)
       .enter()
+      .append('g')
+      .attr('class', 'edge-label-group');
+    edgeLabels
+      .append('rect')
+      .attr('class', 'edge-label-bg')
+      .attr('fill', 'white');
+    edgeLabels
       .append('text')
       .attr('class', 'edge-label')
+      .attr('text-anchor', 'middle')
+      .attr('alignment-baseline', 'middle')
       .text((d) => {
         const edge = historicalData.edges.find(
           (e) => String(e.from) === d.source && String(e.to) === d.target,
@@ -167,7 +186,7 @@ export const NetworkVisualization: React.FC = () => {
       dateRange,
     };
 
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       node.doi = calculateDOI(node, nodes, doiParams);
     });
 
@@ -198,34 +217,53 @@ export const NetworkVisualization: React.FC = () => {
       linkSel.style('opacity', (lk) =>
         nbrs.has(lk.source) && nbrs.has(lk.target) ? 1 : 0.1,
       );
+      edgeLabels.style('opacity', (el) =>
+        nbrs.has(el.source) && nbrs.has(el.target) ? 1 : 0.1,
+      );
+    };
+    const showNonadjacent = () => {
+      nodeSel.style('opacity', 1);
+      linkSel.style('opacity', 1);
+      edgeLabels.style('opacity', 1);
     };
 
-    nodeSel
-      .on('mouseover', (event, d) => {
-        const ttEl = tooltipRef.current;
-        if (ttEl) {
-          d3.select(ttEl)
-            .style('opacity', 1)
-            .html(`<strong>${d.name}</strong><br/>Group: ${d.group}`)
-            .style('left', `${event.pageX + 10}px`)
-            .style('top', `${event.pageY - 28}px`);
-        }
-        hideNonadjacent([d]);
-      })
-      .on('mouseout', () => {
-        if (tooltipRef.current)
-          d3.select(tooltipRef.current).style('opacity', 0);
-        nodeSel.style('opacity', 1);
-        linkSel.style('opacity', 1);
-      });
+    const getNode = (id: string) => {
+      return nodes.find((node) => node.id === id);
+    };
+    const getEndNodes = (line: LinkData) => {
+      return {
+        s: nodes.find((node) => node.id === line.source),
+        t: nodes.find((node) => node.id === line.target),
+      };
+    };
+    const getLinkAction = (link: LinkData) => {
+      const transform = d3.zoomTransform(svgEl);
+
+      const source = getNode(link.source);
+      const target = getNode(link.target);
+
+      if (!source || !target) return { from: undefined, to: undefined };
+
+      // screen coords of source
+      const [sx, sy] = transform.apply([source.x, source.y]);
+      const sd = Math.hypot(width / 2 - sx, height / 2 - sy);
+
+      // screen coords of target
+      const [tx, ty] = transform.apply([target.x, target.y]);
+      const td = Math.hypot(width / 2 - tx, height / 2 - ty);
+
+      return {
+        from: sd > td ? target : source,
+        to: sd > td ? source : target,
+      };
+    };
 
     // run layout (returns original array mutated)
     const layout = new FruchtermanReingold(
       nodes,
       links
         .map((l) => {
-          const s = nodes.find((n) => n.id === l.source);
-          const t = nodes.find((n) => n.id === l.target);
+          const { s, t } = getEndNodes(l);
           return s && t ? { source: s, target: t } : null;
         })
         .filter((x): x is { source: NodeDatum; target: NodeDatum } =>
@@ -234,7 +272,7 @@ export const NetworkVisualization: React.FC = () => {
       {
         width,
         height,
-        iterations: 100,
+        iterations: 500,
         temperature: width / 4,
         coolingFactor: 0.95,
       },
@@ -262,65 +300,56 @@ export const NetworkVisualization: React.FC = () => {
           return n ? (n.displayY ?? n.y) : 0;
         });
 
-      // Update edge label positions
-      edgeLabels
-        .attr('x', (d) => {
-          const source = positioned.find((n) => n.id === d.source);
-          const target = positioned.find((n) => n.id === d.target);
-          if (!source || !target) return 0;
-          const sourceX = source.displayX ?? source.x;
-          const targetX = target.displayX ?? target.x;
-          return (sourceX + targetX) / 2;
-        })
-        .attr('y', (d) => {
-          const source = positioned.find((n) => n.id === d.source);
-          const target = positioned.find((n) => n.id === d.target);
-          if (!source || !target) return 0;
-          const sourceY = source.displayY ?? source.y;
-          const targetY = target.displayY ?? target.y;
-          return (sourceY + targetY) / 2;
-        });
+      edgeLabels.attr('transform', (d) => {
+        const { s, t } = getEndNodes(d);
+        const sx = s ? (s.displayX ?? s.x) : 0;
+        const sy = s ? (s.displayY ?? s.y) : 0;
+        const tx = t ? (t.displayX ?? t.x) : 0;
+        const ty = t ? (t.displayY ?? t.y) : 0;
+        return `translate(${(sx + tx) / 2},${(sy + ty) / 2})`;
+      });
+
+      edgeLabels.each(function () {
+        const grp = d3.select(this);
+        const txt = grp.select<SVGTextElement>('text').node() as SVGTextElement;
+        const bb = txt.getBBox();
+        grp
+          .select('rect')
+          .attr('x', bb.x - 2)
+          .attr('y', bb.y - 1)
+          .attr('width', bb.width + 4)
+          .attr('height', bb.height + 2);
+      });
 
       nodeSel.attr('transform', (d) => {
-        const n = positioned.find((n) => n.id === d.id);
-        const x = n ? (n.displayX ?? n.x) : d.x;
-        const y = n ? (n.displayY ?? n.y) : d.y;
+        const x = d.displayX ?? d.x;
+        const y = d.displayY ?? d.y;
         return `translate(${x},${y})`;
       });
     }
 
-    nodeSel.on('click', (event, d) => {
-      switchSelected(d);
-    });
-
-    const getNode = (id: string) => {
-      return nodes.find((node) => node.id === id);
-    };
-
-    const getLinkAction = (link: LinkData) => {
-      const transform = d3.zoomTransform(svgEl);
-
-      const source = getNode(link.source);
-      const target = getNode(link.target);
-
-      if (!source || !target) return { from: undefined, to: undefined };
-
-      // screen coords of source
-      const [sx, sy] = transform.apply([source.x, source.y]);
-      const sd = Math.hypot(width / 2 - sx, height / 2 - sy);
-
-      // screen coords of target
-      const [tx, ty] = transform.apply([target.x, target.y]);
-      const td = Math.hypot(width / 2 - tx, height / 2 - ty);
-
-      return {
-        from: sd > td ? target : source,
-        to: sd > td ? source : target,
-      };
-    };
+    nodeSel
+      .on('mouseover', (event, d) => {
+        const ttEl = tooltipRef.current;
+        if (ttEl) {
+          d3.select(ttEl)
+            .style('opacity', 1)
+            .html(`<strong>${d.name}</strong><br/>Group: ${d.group}`)
+            .style('left', `${event.pageX + 10}px`)
+            .style('top', `${event.pageY - 28}px`);
+        }
+        hideNonadjacent([d]);
+      })
+      .on('mouseout', () => {
+        if (tooltipRef.current)
+          d3.select(tooltipRef.current).style('opacity', 0);
+        showNonadjacent();
+      })
+      .on('click', (event, d) => {
+        switchSelected(d);
+      });
 
     const defs = svg.append('defs');
-
     linkSel
       .on('click', (_, d) => {
         const { to: next } = getLinkAction(d);
@@ -358,11 +387,8 @@ export const NetworkVisualization: React.FC = () => {
           .attr('stroke-width', 10)
           .attr('stroke-opacity', 1);
 
-        const source = getNode(d.source);
-        const target = getNode(d.target);
-
-        if (!source || !target) return;
-        hideNonadjacent([source, target]);
+        const { s, t } = getEndNodes(d);
+        if (s && t) hideNonadjacent([s, t]);
       })
       .on('mouseout', function (_, d) {
         const lineSel = d3.select(this);
@@ -371,8 +397,7 @@ export const NetworkVisualization: React.FC = () => {
           .attr('stroke', '#999')
           .attr('stroke-width', Math.sqrt(d.value))
           .attr('stroke-opacity', 0.6);
-        nodeSel.style('opacity', 1);
-        linkSel.style('opacity', 1);
+        showNonadjacent();
       });
 
     updateDisplay();
@@ -385,14 +410,16 @@ export const NetworkVisualization: React.FC = () => {
         dateRange,
       };
 
-      nodes.forEach(node => {
+      nodes.forEach((node) => {
         node.doi = calculateDOI(node, nodes, doiParams);
       });
 
-      nodeSel.selectAll<SVGCircleElement, NodeDatum>('circle')
+      nodeSel
+        .selectAll<SVGCircleElement, NodeDatum>('circle')
         .attr('opacity', (d) => 0.3 + (d.doi || 0) * 0.7);
 
-      nodeSel.selectAll<SVGTextElement, NodeDatum>('text')
+      nodeSel
+        .selectAll<SVGTextElement, NodeDatum>('text')
         .attr('opacity', (d) => 0.3 + (d.doi || 0) * 0.7);
     };
 

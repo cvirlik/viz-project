@@ -13,6 +13,9 @@ export const calculateNodeRadius = (node: NodeDatum, allNodes: NodeDatum[]) => {
     (node.degree || 0 - minDegree) / (maxDegree - minDegree);
 
   // Scale size between baseSize and maxSize
+  console.log(
+    Math.min(baseSize + normalizedDegree * (maxSize - baseSize), maxSize),
+  );
   return Math.min(baseSize + normalizedDegree * (maxSize - baseSize), maxSize);
 };
 
