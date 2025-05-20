@@ -26,6 +26,7 @@ export const NetworkVisualization: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [positioned, setPositioned] = useState<NodeDatum[]>([]);
+  const [focusNode, setFocusNode] = useState<NodeDatum | undefined>(undefined);
   const [dateRange, setDateRange] = useState<{ min: number; max: number }>({
     min: new Date('1910-01-01').getTime(),
     max: new Date('2024-01-01').getTime(),
@@ -239,6 +240,7 @@ export const NetworkVisualization: React.FC = () => {
       searchQuery,
       selectedArchetypes,
       dateRange,
+      focusNode,
     };
 
     nodes.forEach((node) => {
@@ -406,11 +408,13 @@ export const NetworkVisualization: React.FC = () => {
             .style('left', `${event.pageX + 10}px`)
             .style('top', `${event.pageY - 28}px`);
         }
+        setFocusNode(d); // TODO: Later maybe change to click
         hideNonadjacent([d]);
       })
       .on('mouseout', () => {
         if (tooltipRef.current)
           d3.select(tooltipRef.current).style('opacity', 0);
+        setFocusNode(undefined);
         showNonadjacent();
       })
       .on('click', (event, d) => {
@@ -482,6 +486,7 @@ export const NetworkVisualization: React.FC = () => {
       searchQuery,
       selectedArchetypes,
       dateRange,
+      focusNode,
     };
 
     positioned.forEach((node) => {
@@ -497,7 +502,7 @@ export const NetworkVisualization: React.FC = () => {
         const l = 90 - (d.doi || 0) * 60;
         return hslToHex(h, s, l);
       });
-  }, [searchQuery, selectedArchetypes, dateRange, positioned]); // Only update colors when filters change
+  }, [searchQuery, selectedArchetypes, dateRange, positioned, focusNode]); // Add focusNode to dependencies
 
   return (
     <div id="main-container">
