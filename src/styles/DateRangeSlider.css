@@ -2,14 +2,12 @@
   padding: 16px;
   background-color: #34495e;
   border-radius: 4px;
-  margin: 16px 0;
   color: white;
 }
 
 .date-labels {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
 }
 
 .min-date,

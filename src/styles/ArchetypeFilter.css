@@ -3,14 +3,15 @@
   gap: 8px;
   padding: 8px 16px;
   flex-wrap: wrap;
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: #34495e;
   border-radius: 4px;
-  margin: 8px 0;
+  justify-content: space-evenly;
 }
 
 .archetype-chip {
   cursor: pointer;
   transition: all 0.2s ease-in-out;
+  text-transform: uppercase;
 }
 
 .archetype-chip:hover {

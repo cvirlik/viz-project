@@ -19,11 +19,9 @@ const SearchResults: React.FC<SearchResultsProps> = ({
 }) => {
   const filteredResults = historicalData.vertices
     .filter(vertex => {
-      // Text search
       const matchesSearch =
         searchQuery === '' || vertex.title.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Date range filter
       const beginDate = vertex.attributes['1'] ? new Date(vertex.attributes['1']).getTime() : 0;
       const endDate = vertex.attributes['2']
         ? new Date(vertex.attributes['2']).getTime()
@@ -31,7 +29,6 @@ const SearchResults: React.FC<SearchResultsProps> = ({
 
       const matchesDateRange = beginDate >= dateRange.min && endDate <= dateRange.max;
 
-      // Archetype filter
       const matchesArchetype = selectedArchetypes.includes(vertex.archetype);
       // OR stačí. Nemusí pasovat title i datum.
       // Spíš pak zvětšit nodes, které vyhovují oběma filterům.

@@ -1,49 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { FruchtermanReingold } from '../layouts/fruchterman';
-import SearchResults from './SearchResults';
-import { DateRangeSlider } from './DateRangeSlider';
-import { calculateNodeRadius, hexToHSL, hslToHex } from '../utils/visual';
-import ArchetypeFilter from './ArchetypeFilter';
+import { hexToHSL, hslToHex } from '../utils/visual';
 import { calculateDOI } from '../utils/doi-calculator';
-import { LinkData, NodeData, parseData, rawData } from '../utils/data';
+import { LinkData, NodeData, parseData } from '../utils/data';
 import { makeControllers, makeNodes } from '../utils/d3-controllers';
 import { initSvg } from '../utils/svg';
-import { hideNonAdjacent, showNonAdjacent } from '../utils/effects';
+import { hideNonAdjacent, makeGradient, showNonAdjacent } from '../utils/effects';
+import { Sidebar } from './Sidebar';
+import { DOIProvider, useDOI } from '../providers/doi';
 
-export const NetworkVisualization: React.FC = () => {
+const Body: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>();
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const { searchQuery, dateRange, selectedArchetypes } = useDOI();
+
   const [positioned, setPositioned] = useState<NodeData[]>([]);
   const [focusNode, setFocusNode] = useState<NodeData | undefined>(undefined);
-  const [dateRange, setDateRange] = useState<{ min: number; max: number }>({
-    min: new Date('1910-01-01').getTime(),
-    max: new Date('2024-01-01').getTime(),
-  });
-  const [selectedArchetypes, setSelectedArchetypes] = useState<number[]>(
-    rawData.vertexArchetypes.map((_, index) => index)
-  );
 
   const layoutRef = useRef<FruchtermanReingold | null>(null);
   const updateDisplayRef = useRef<() => void>();
   const intervalRef = useRef<number>();
   const [isRunning, setIsRunning] = useState(false);
 
-  const handleSearchChange: React.ChangeEventHandler<HTMLInputElement> = event =>
-    setSearchQuery(event.target.value);
-
-  const handleArchetypeChange = (newArchetypes: number[]) => {
-    setSelectedArchetypes(newArchetypes);
-  };
-
-  const handleDateRangeChange = (minDate: number, maxDate: number) => {
-    setDateRange({ min: minDate, max: maxDate });
-  };
-
-  const switchSelected = (selected: NodeData | string) => {
+  const setSelected = (selected: NodeData | string) => {
     const svgEl = svgRef.current;
     if (!svgEl || !zoomBehaviorRef.current) return;
 
@@ -51,14 +33,14 @@ export const NetworkVisualization: React.FC = () => {
 
     const width = svgEl.clientWidth;
     const height = svgEl.clientHeight;
-    const datum =
+    const data =
       typeof selected === 'string' ? positioned.find(node => node.id === selected) : selected;
-    if (!datum) return;
+    if (!data) return;
 
     const current = d3.zoomTransform(svgEl);
     const scale = current.k;
-    const tx = width / 2 - datum.x * scale;
-    const ty = height / 2 - datum.y * scale;
+    const tx = width / 2 - data.x * scale;
+    const ty = height / 2 - data.y * scale;
     svg
       .transition()
       .duration(750)
@@ -139,6 +121,7 @@ export const NetworkVisualization: React.FC = () => {
       {
         width,
         height,
+        k: 150,
         iterations: 1,
         temperature: width / 4,
         coolingFactor: 0.95,
@@ -215,46 +198,23 @@ export const NetworkVisualization: React.FC = () => {
         setFocusNode(undefined);
         showNonAdjacent(nodeController, linkController, edgeController);
       })
-      .on('click', (event, d) => {
-        switchSelected(d);
-      });
+      .on('click', (_, node) => setSelected(node));
 
     const defs = svg.append('defs');
     linkController
       .on('click', (_, d) => {
         const { to: next } = getLinkAction(d);
-        switchSelected(next as NodeData);
+        if (!next) return;
+        setSelected(next);
       })
       .on('mouseover', function (_, link) {
-        const controller = d3.select(this as SVGLineElement);
         const gradId = link.gradientId;
         defs.select(`#${gradId}`).remove();
 
         const { from, to } = getLinkAction(link);
         if (!from || !to) return;
 
-        const grad = defs
-          .append('linearGradient')
-          .attr('id', gradId)
-          .attr('gradientUnits', 'userSpaceOnUse')
-          .attr('x1', from.x)
-          .attr('y1', from.y)
-          .attr('x2', to.x)
-          .attr('y2', to.y);
-        grad
-          .append('stop')
-          .attr('offset', '0%')
-          .attr('stop-color', d3.schemeCategory10[from.group % 10])
-          .attr('stop-opacity', 0);
-        grad
-          .append('stop')
-          .attr('offset', '100%')
-          .attr('stop-color', d3.schemeCategory10[to.group % 10])
-          .attr('stop-opacity', 1);
-        controller
-          .attr('stroke', `url(#${gradId})`)
-          .attr('stroke-width', 10)
-          .attr('stroke-opacity', 1);
+        makeGradient(gradId, from, to, defs, d3.select(this as SVGLineElement));
 
         const { s, t } = getEndNodes(link);
         if (s && t)
@@ -267,6 +227,7 @@ export const NetworkVisualization: React.FC = () => {
           .attr('stroke', '#999')
           .attr('stroke-width', Math.sqrt(link.value))
           .attr('stroke-opacity', 0.6);
+
         showNonAdjacent(nodeController, linkController, edgeController);
       });
 
@@ -323,51 +284,14 @@ export const NetworkVisualization: React.FC = () => {
       <div id="visualization-container">
         <svg id="visualization" ref={svgRef} />
       </div>
-      <div id="sidebar">
-        <div className="faceted-search">
-          <div className="search-container">
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Vyhledávat v záznamech.."
-              value={searchQuery}
-              onChange={handleSearchChange}
-            />
-            <svg
-              className="search-icon"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-          </div>
-          <ArchetypeFilter
-            selectedArchetypes={selectedArchetypes}
-            onArchetypeChange={handleArchetypeChange}
-          />
-          <DateRangeSlider onRangeChange={handleDateRangeChange} />
-        </div>
-        <button onClick={() => setIsRunning(!isRunning)} className="play-pause-btn">
-          {isRunning ? 'Pause' : 'Play'}
-        </button>
-
-        <SearchResults
-          searchQuery={searchQuery}
-          dateRange={dateRange}
-          selectedArchetypes={selectedArchetypes}
-          onResultClick={switchSelected}
-        />
-      </div>
+      <Sidebar isRunning={isRunning} setIsRunning={setIsRunning} setSelected={setSelected} />
       <div id="tooltip" className="tooltip" ref={tooltipRef}></div>
     </div>
   );
 };
 
-export default NetworkVisualization;
+export const NetworkVisualization: React.FC = () => (
+  <DOIProvider>
+    <Body />
+  </DOIProvider>
+);
