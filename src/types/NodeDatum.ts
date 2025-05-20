@@ -1,6 +1,6 @@
 import { SimulationNodeDatum } from 'd3';
 
-export interface NodeDatum extends SimulationNodeDatum {
+export type NodeDatum = SimulationNodeDatum & {
   id: string;
   name: string;
   group: number;
@@ -12,4 +12,4 @@ export interface NodeDatum extends SimulationNodeDatum {
   displayY?: number;
   degree?: number;
   doi?: number;
-}
+};

@@ -1,21 +1,23 @@
 import { NodeDatum } from '../types/NodeDatum';
 
-interface Point {
+type Point = {
   x: number;
   y: number;
-}
-interface Link {
+};
+
+type Link = {
   source: NodeDatum;
   target: NodeDatum;
-}
-interface Options {
+};
+
+type Options = {
   width: number;
   height: number;
   iterations?: number;
   k?: number;
   temperature?: number;
   coolingFactor?: number;
-}
+};
 
 export class FruchtermanReingold {
   private width: number;
@@ -34,15 +36,14 @@ export class FruchtermanReingold {
     this.width = options.width;
     this.height = options.height;
     this.iterations = options.iterations ?? 50;
-    this.k =
-      options.k ?? Math.sqrt((this.width * this.height) / this.nodes.length);
+    this.k = options.k ?? Math.sqrt((this.width * this.height) / this.nodes.length);
     this.temperature = options.temperature ?? this.width / 4;
     this.coolingFactor = options.coolingFactor ?? 0.95;
   }
 
   private calculateRepulsiveForces() {
     this.forces.clear();
-    this.nodes.forEach((n) => this.forces.set(n.id, { x: 0, y: 0 }));
+    this.nodes.forEach(n => this.forces.set(n.id, { x: 0, y: 0 }));
     for (let i = 0; i < this.nodes.length; i++) {
       for (let j = i + 1; j < this.nodes.length; j++) {
         const a = this.nodes[i],
@@ -67,7 +68,7 @@ export class FruchtermanReingold {
   }
 
   private calculateAttractiveForces() {
-    this.links.forEach((link) => {
+    this.links.forEach(link => {
       const dx = link.target.x - link.source.x;
       const dy = link.target.y - link.source.y;
       const dist = Math.hypot(dx, dy);
@@ -89,7 +90,7 @@ export class FruchtermanReingold {
   private calculateCenteringForces(strength = 0.1) {
     const cx = this.width / 2,
       cy = this.height / 2;
-    this.nodes.forEach((n) => {
+    this.nodes.forEach(n => {
       const f = this.forces.get(n.id);
       if (f) {
         f.x += (cx - n.x) * strength;
@@ -99,7 +100,7 @@ export class FruchtermanReingold {
   }
 
   private updatePositions() {
-    this.nodes.forEach((n) => {
+    this.nodes.forEach(n => {
       if (n.fx == null && n.fy == null) {
         const f = this.forces.get(n.id);
         if (f) {

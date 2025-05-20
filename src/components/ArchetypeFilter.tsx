@@ -4,10 +4,10 @@ import * as d3 from 'd3'; // Change to our color scheme later
 import historicalData from '../data/historical-data.json';
 import '../styles/ArchetypeFilter.css';
 
-interface ArchetypeFilterProps {
+type ArchetypeFilterProps = {
   selectedArchetypes: number[];
   onArchetypeChange: (archetypes: number[]) => void;
-}
+};
 
 const ArchetypeFilter: React.FC<ArchetypeFilterProps> = ({
   selectedArchetypes,
@@ -15,7 +15,7 @@ const ArchetypeFilter: React.FC<ArchetypeFilterProps> = ({
 }) => {
   const handleChipClick = (archetypeId: number) => {
     if (selectedArchetypes.includes(archetypeId)) {
-      onArchetypeChange(selectedArchetypes.filter((id) => id !== archetypeId));
+      onArchetypeChange(selectedArchetypes.filter(id => id !== archetypeId));
     } else {
       onArchetypeChange([...selectedArchetypes, archetypeId]);
     }
@@ -32,9 +32,7 @@ const ArchetypeFilter: React.FC<ArchetypeFilterProps> = ({
             backgroundColor: selectedArchetypes.includes(index)
               ? d3.schemeCategory10[index % 10]
               : 'transparent',
-            color: selectedArchetypes.includes(index)
-              ? 'white'
-              : d3.schemeCategory10[index % 10],
+            color: selectedArchetypes.includes(index) ? 'white' : d3.schemeCategory10[index % 10],
             border: `1px solid ${d3.schemeCategory10[index % 10]}`,
             '&:hover': {
               backgroundColor: d3.schemeCategory10[index % 10],

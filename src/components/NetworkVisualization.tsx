@@ -12,12 +12,12 @@ import { calculateNodeRadius } from '../utils/visual';
 import ArchetypeFilter from './ArchetypeFilter';
 import { calculateDOI } from '../utils/doi-calculator';
 
-interface LinkData {
+type LinkData = {
   source: string;
   target: string;
   value: number;
   gradientId: string;
-}
+};
 
 export const NetworkVisualization: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -32,7 +32,7 @@ export const NetworkVisualization: React.FC = () => {
     max: new Date('2024-01-01').getTime(),
   });
   const [selectedArchetypes, setSelectedArchetypes] = useState<number[]>(
-    historicalData.vertexArchetypes.map((_, index) => index),
+    historicalData.vertexArchetypes.map((_, index) => index)
   );
 
   // dynamic layout refs
@@ -116,8 +116,7 @@ export const NetworkVisualization: React.FC = () => {
 
     const width = svgEl.clientWidth;
     const height = svgEl.clientHeight;
-    const n =
-      typeof node === 'string' ? positioned.find((n) => n.id === node) : node;
+    const n = typeof node === 'string' ? positioned.find(n => n.id === node) : node;
     if (!n) return;
 
     const current = d3.zoomTransform(svgEl);
@@ -127,10 +126,7 @@ export const NetworkVisualization: React.FC = () => {
     svg
       .transition()
       .duration(750)
-      .call(
-        zoomBehaviorRef.current.transform,
-        d3.zoomIdentity.translate(tx, ty).scale(scale),
-      );
+      .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
   };
 
   useEffect(() => {
@@ -162,7 +158,7 @@ export const NetworkVisualization: React.FC = () => {
     zoomBehaviorRef.current = zoomBehavior;
 
     // initial nodes and links
-    const nodes: NodeDatum[] = historicalData.vertices.map((v) => ({
+    const nodes: NodeDatum[] = historicalData.vertices.map(v => ({
       id: String(v.id),
       name: v.title,
       group: v.archetype,
@@ -170,7 +166,7 @@ export const NetworkVisualization: React.FC = () => {
       y: Math.random() * height,
       degree: 0,
     }));
-    const links: LinkData[] = historicalData.edges.map((e) => ({
+    const links: LinkData[] = historicalData.edges.map(e => ({
       source: String(e.from),
       target: String(e.to),
       value: 1,
@@ -193,7 +189,7 @@ export const NetworkVisualization: React.FC = () => {
       }
       tgtSet.add(source);
     });
-    nodes.forEach((node) => {
+    nodes.forEach(node => {
       node.degree = neighborMap.get(node.id)?.size || 0;
     });
 
@@ -204,7 +200,7 @@ export const NetworkVisualization: React.FC = () => {
       .enter()
       .append('line')
       .attr('class', 'link')
-      .attr('stroke-width', (d) => Math.sqrt(d.value))
+      .attr('stroke-width', d => Math.sqrt(d.value))
       .attr('stroke', '#999');
 
     const edgeLabels = g
@@ -214,18 +210,15 @@ export const NetworkVisualization: React.FC = () => {
       .enter()
       .append('g')
       .attr('class', 'edge-label-group');
-    edgeLabels
-      .append('rect')
-      .attr('class', 'edge-label-bg')
-      .attr('fill', 'white');
+    edgeLabels.append('rect').attr('class', 'edge-label-bg').attr('fill', 'white');
     edgeLabels
       .append('text')
       .attr('class', 'edge-label')
       .attr('text-anchor', 'middle')
       .attr('alignment-baseline', 'middle')
-      .text((d) => {
+      .text(d => {
         const edge = historicalData.edges.find(
-          (e) => String(e.from) === d.source && String(e.to) === d.target,
+          e => String(e.from) === d.source && String(e.to) === d.target
         );
         return edge?.attributes?.['3'] || '';
       });
@@ -246,14 +239,14 @@ export const NetworkVisualization: React.FC = () => {
       focusNode,
     };
 
-    nodes.forEach((node) => {
+    nodes.forEach(node => {
       node.doi = calculateDOI(node, nodes, doiParams);
     });
 
     nodeSel
       .append('circle')
-      .attr('r', (d) => calculateNodeRadius(d, nodes))
-      .attr('fill', (d) => {
+      .attr('r', d => calculateNodeRadius(d, nodes))
+      .attr('fill', d => {
         const baseColor = d3.schemeCategory10[d.group % 10];
         const { h, s } = hexToHSL(baseColor);
         const l = 90 - (d.doi || 0) * 60; // Scale DOI from 90% to 30% lightness
@@ -263,18 +256,18 @@ export const NetworkVisualization: React.FC = () => {
 
     nodeSel
       .append('text')
-      .text((d) =>
+      .text(d =>
         d.name
           .split(' ')
-          .map((part) =>
+          .map(part =>
             part && part.length > 3
               ? part[0]
                   .split('(')[0]
                   .replaceAll(/[^a-zA-Z0-9]/g, '')
                   .toUpperCase()
-              : part || '',
+              : part || ''
           )
-          .join(''),
+          .join('')
       )
       .attr('x', 0)
       .attr('y', 0)
@@ -287,10 +280,10 @@ export const NetworkVisualization: React.FC = () => {
 
     const hideNonadjacent = (nodes: NodeDatum[]) => {
       const nbrs = new Set();
-      nodes.forEach((d) => {
+      nodes.forEach(d => {
         const adj = neighborMap.get(d.id);
         if (adj) {
-          adj.forEach((id) => nbrs.add(id));
+          adj.forEach(id => nbrs.add(id));
         }
         nbrs.add(d.id);
       });
@@ -299,12 +292,12 @@ export const NetworkVisualization: React.FC = () => {
 
       const LIGHT_OPACITY = 0.3;
 
-      nodeSel.style('opacity', (nd) => (nbrs.has(nd.id) ? 1 : LIGHT_OPACITY));
-      linkSel.style('opacity', (lk) =>
-        nbrs.has(lk.source) && nbrs.has(lk.target) ? 1 : LIGHT_OPACITY,
+      nodeSel.style('opacity', nd => (nbrs.has(nd.id) ? 1 : LIGHT_OPACITY));
+      linkSel.style('opacity', lk =>
+        nbrs.has(lk.source) && nbrs.has(lk.target) ? 1 : LIGHT_OPACITY
       );
-      edgeLabels.style('opacity', (el) =>
-        nbrs.has(el.source) && nbrs.has(el.target) ? 1 : LIGHT_OPACITY,
+      edgeLabels.style('opacity', el =>
+        nbrs.has(el.source) && nbrs.has(el.target) ? 1 : LIGHT_OPACITY
       );
     };
     const showNonadjacent = () => {
@@ -315,13 +308,13 @@ export const NetworkVisualization: React.FC = () => {
     };
 
     const getNode = (id: string) => {
-      return nodes.find((node) => node.id === id);
+      return nodes.find(node => node.id === id);
     };
 
     const getEndNodes = (line: LinkData) => {
       return {
-        s: nodes.find((node) => node.id === line.source),
-        t: nodes.find((node) => node.id === line.target),
+        s: nodes.find(node => node.id === line.source),
+        t: nodes.find(node => node.id === line.target),
       };
     };
 
@@ -351,20 +344,18 @@ export const NetworkVisualization: React.FC = () => {
     const layout = new FruchtermanReingold(
       nodes,
       links
-        .map((l) => {
+        .map(l => {
           const { s, t } = getEndNodes(l);
           return s && t ? { source: s, target: t } : null;
         })
-        .filter((x): x is { source: NodeDatum; target: NodeDatum } =>
-          Boolean(x),
-        ),
+        .filter((x): x is { source: NodeDatum; target: NodeDatum } => Boolean(x)),
       {
         width,
         height,
         iterations: 1,
         temperature: width / 4,
         coolingFactor: 0.95,
-      },
+      }
     );
     layoutRef.current = layout;
     const positioned = layout.run() as NodeDatum[];
@@ -372,24 +363,24 @@ export const NetworkVisualization: React.FC = () => {
 
     function updateDisplay() {
       linkSel
-        .attr('x1', (d) => {
-          const n = positioned.find((n) => n.id === d.source);
+        .attr('x1', d => {
+          const n = positioned.find(n => n.id === d.source);
           return n ? n.x : 0;
         })
-        .attr('y1', (d) => {
-          const n = positioned.find((n) => n.id === d.source);
+        .attr('y1', d => {
+          const n = positioned.find(n => n.id === d.source);
           return n ? n.y : 0;
         })
-        .attr('x2', (d) => {
-          const n = positioned.find((n) => n.id === d.target);
+        .attr('x2', d => {
+          const n = positioned.find(n => n.id === d.target);
           return n ? n.x : 0;
         })
-        .attr('y2', (d) => {
-          const n = positioned.find((n) => n.id === d.target);
+        .attr('y2', d => {
+          const n = positioned.find(n => n.id === d.target);
           return n ? n.y : 0;
         });
 
-      edgeLabels.attr('transform', (d) => {
+      edgeLabels.attr('transform', d => {
         const { s, t } = getEndNodes(d);
         const sx = s ? s.x : 0;
         const sy = s ? s.y : 0;
@@ -410,8 +401,8 @@ export const NetworkVisualization: React.FC = () => {
           .attr('height', bb.height + 2);
       });
 
-      nodeSel.attr('transform', (d) => {
-        const n = positioned.find((n) => n.id === d.id);
+      nodeSel.attr('transform', d => {
+        const n = positioned.find(n => n.id === d.id);
         return n ? `translate(${n.x},${n.y})` : 'translate(0,0)';
       });
     }
@@ -433,8 +424,7 @@ export const NetworkVisualization: React.FC = () => {
         hideNonadjacent([d]);
       })
       .on('mouseout', () => {
-        if (tooltipRef.current)
-          d3.select(tooltipRef.current).style('opacity', 0);
+        if (tooltipRef.current) d3.select(tooltipRef.current).style('opacity', 0);
         setFocusNode(undefined);
         showNonadjacent();
       })
@@ -515,19 +505,17 @@ export const NetworkVisualization: React.FC = () => {
       focusNode,
     };
 
-    positioned.forEach((node) => {
+    positioned.forEach(node => {
       node.doi = calculateDOI(node, positioned, doiParams);
     });
 
     // Update colors
-    nodeSel
-      .selectAll<SVGCircleElement, NodeDatum>('circle')
-      .attr('fill', (d) => {
-        const baseColor = d3.schemeCategory10[d.group % 10];
-        const { h, s } = hexToHSL(baseColor);
-        const l = 90 - (d.doi || 0) * 60;
-        return hslToHex(h, s, l);
-      });
+    nodeSel.selectAll<SVGCircleElement, NodeDatum>('circle').attr('fill', d => {
+      const baseColor = d3.schemeCategory10[d.group % 10];
+      const { h, s } = hexToHSL(baseColor);
+      const l = 90 - (d.doi || 0) * 60;
+      return hslToHex(h, s, l);
+    });
   }, [searchQuery, selectedArchetypes, dateRange, positioned, focusNode]); // Add focusNode to dependencies
 
   useEffect(() => {
@@ -580,10 +568,7 @@ export const NetworkVisualization: React.FC = () => {
           />
           <DateRangeSlider onRangeChange={handleDateRangeChange} />
         </div>
-        <button
-          onClick={() => setIsRunning(!isRunning)}
-          className="play-pause-btn"
-        >
+        <button onClick={() => setIsRunning(!isRunning)} className="play-pause-btn">
           {isRunning ? 'Pause' : 'Play'}
         </button>
 
