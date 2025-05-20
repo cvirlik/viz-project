@@ -1,21 +1,15 @@
-import historicalData from '../data/historical-data.json';
-
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { FruchtermanReingold } from '../layouts/fruchterman';
 import SearchResults from './SearchResults';
 import { DateRangeSlider } from './DateRangeSlider';
-import { NodeDatum } from '../types/d3';
-import { calculateNodeRadius } from '../utils/visual';
+import { calculateNodeRadius, hexToHSL, hslToHex } from '../utils/visual';
 import ArchetypeFilter from './ArchetypeFilter';
 import { calculateDOI } from '../utils/doi-calculator';
-
-type LinkData = {
-  source: string;
-  target: string;
-  value: number;
-  gradientId: string;
-};
+import { LinkData, NodeData, parseData, rawData } from '../utils/data';
+import { makeControllers, makeNodes } from '../utils/d3-controllers';
+import { initSvg } from '../utils/svg';
+import { hideNonAdjacent, showNonAdjacent } from '../utils/effects';
 
 export const NetworkVisualization: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -23,80 +17,23 @@ export const NetworkVisualization: React.FC = () => {
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [positioned, setPositioned] = useState<NodeDatum[]>([]);
-  const [focusNode, setFocusNode] = useState<NodeDatum | undefined>(undefined);
+  const [positioned, setPositioned] = useState<NodeData[]>([]);
+  const [focusNode, setFocusNode] = useState<NodeData | undefined>(undefined);
   const [dateRange, setDateRange] = useState<{ min: number; max: number }>({
     min: new Date('1910-01-01').getTime(),
     max: new Date('2024-01-01').getTime(),
   });
   const [selectedArchetypes, setSelectedArchetypes] = useState<number[]>(
-    historicalData.vertexArchetypes.map((_, index) => index)
+    rawData.vertexArchetypes.map((_, index) => index)
   );
 
-  // dynamic layout refs
   const layoutRef = useRef<FruchtermanReingold | null>(null);
   const updateDisplayRef = useRef<() => void>();
   const intervalRef = useRef<number>();
   const [isRunning, setIsRunning] = useState(false);
 
-  // Helper function to convert hex to HSL
-  const hexToHSL = (hex: string) => {
-    // Remove the hash if it exists
-    hex = hex.replace('#', '');
-
-    // Convert hex to RGB
-    const r = parseInt(hex.substring(0, 2), 16) / 255;
-    const g = parseInt(hex.substring(2, 4), 16) / 255;
-    const b = parseInt(hex.substring(4, 6), 16) / 255;
-
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-
-    let h = 0;
-    let s = 0;
-    const l = (max + min) / 2;
-
-    if (max !== min) {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
-      switch (max) {
-        case r:
-          h = (g - b) / d + (g < b ? 6 : 0);
-          break;
-        case g:
-          h = (b - r) / d + 2;
-          break;
-        case b:
-          h = (r - g) / d + 4;
-          break;
-      }
-
-      h /= 6;
-    }
-
-    return { h: h * 360, s: s * 100, l: l * 100 };
-  };
-
-  // Helper function to convert HSL to hex
-  const hslToHex = (h: number, s: number, l: number) => {
-    l /= 100;
-    const a = (s * Math.min(l, 1 - l)) / 100;
-
-    const f = (n: number) => {
-      const k = (n + h / 30) % 12;
-      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-      return Math.round(255 * color)
-        .toString(16)
-        .padStart(2, '0');
-    };
-
-    return `#${f(0)}${f(8)}${f(4)}`;
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
+  const handleSearchChange: React.ChangeEventHandler<HTMLInputElement> = event =>
+    setSearchQuery(event.target.value);
 
   const handleArchetypeChange = (newArchetypes: number[]) => {
     setSelectedArchetypes(newArchetypes);
@@ -106,7 +43,7 @@ export const NetworkVisualization: React.FC = () => {
     setDateRange({ min: minDate, max: maxDate });
   };
 
-  const switchSelected = (node: NodeDatum | string) => {
+  const switchSelected = (selected: NodeData | string) => {
     const svgEl = svgRef.current;
     if (!svgEl || !zoomBehaviorRef.current) return;
 
@@ -114,13 +51,14 @@ export const NetworkVisualization: React.FC = () => {
 
     const width = svgEl.clientWidth;
     const height = svgEl.clientHeight;
-    const n = typeof node === 'string' ? positioned.find(n => n.id === node) : node;
-    if (!n) return;
+    const datum =
+      typeof selected === 'string' ? positioned.find(node => node.id === selected) : selected;
+    if (!datum) return;
 
     const current = d3.zoomTransform(svgEl);
     const scale = current.k;
-    const tx = width / 2 - n.x * scale;
-    const ty = height / 2 - n.y * scale;
+    const tx = width / 2 - datum.x * scale;
+    const ty = height / 2 - datum.y * scale;
     svg
       .transition()
       .duration(750)
@@ -128,106 +66,19 @@ export const NetworkVisualization: React.FC = () => {
   };
 
   useEffect(() => {
-    const svgEl = svgRef.current;
-    if (!svgEl) return;
+    const root = svgRef.current;
+    if (!root) return;
 
-    const width = svgEl.clientWidth;
-    const height = svgEl.clientHeight;
-    const svg = d3.select(svgEl).attr('width', width).attr('height', height);
-    svg.selectAll('*').remove();
-
-    const g = svg.append('g');
-
-    const zoomBehavior = d3
-      .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.1, 10])
-      .on('zoom', ({ transform }) => {
-        g.attr('transform', transform);
-        // const k = d3.zoomTransform(svgEl).k;
-        // g.selectAll<SVGGElement, NodeDatum>('g.node')
-        //   .select<SVGTextElement>('text')
-        //   .style('display', (d) =>
-        //     calculateDOI(d, nodes) >= DOI_THRESHOLD || k >= MIN_SCALE_FOR_SMALL
-        //       ? 'block'
-        //       : 'none',
-        //   );
-      });
-    svg.call(zoomBehavior);
+    const { zoomBehavior, g, width, height, svg } = initSvg(root);
     zoomBehaviorRef.current = zoomBehavior;
 
-    // initial nodes and links
-    const nodes: NodeDatum[] = historicalData.vertices.map(v => ({
-      id: String(v.id),
-      name: v.title,
-      group: v.archetype,
-      x: Math.random() * width,
-      y: Math.random() * height,
-      degree: 0,
-    }));
-    const links: LinkData[] = historicalData.edges.map(e => ({
-      source: String(e.from),
-      target: String(e.to),
-      value: 1,
-      gradientId: `grad-${e.from}-${e.to}`,
-    }));
+    const { nodes, links, neighborMap } = parseData(width, height);
 
-    const neighborMap = new Map<string, Set<string>>();
-    links.forEach(({ source, target }) => {
-      let srcSet = neighborMap.get(source);
-      if (!srcSet) {
-        srcSet = new Set<string>();
-        neighborMap.set(source, srcSet);
-      }
-      srcSet.add(target);
+    for (const node of nodes) {
+      node.degree = neighborMap.get(node.id)?.size ?? 0;
+    }
 
-      let tgtSet = neighborMap.get(target);
-      if (!tgtSet) {
-        tgtSet = new Set<string>();
-        neighborMap.set(target, tgtSet);
-      }
-      tgtSet.add(source);
-    });
-    nodes.forEach(node => {
-      node.degree = neighborMap.get(node.id)?.size || 0;
-    });
-
-    const linkSel = g
-      .append('g')
-      .selectAll('line')
-      .data(links)
-      .enter()
-      .append('line')
-      .attr('class', 'link')
-      .attr('stroke-width', d => Math.sqrt(d.value))
-      .attr('stroke', '#999');
-
-    const edgeLabels = g
-      .append('g')
-      .selectAll<SVGGElement, LinkData>('g.edge-label-group')
-      .data(links)
-      .enter()
-      .append('g')
-      .attr('class', 'edge-label-group');
-    edgeLabels.append('rect').attr('class', 'edge-label-bg').attr('fill', 'white');
-    edgeLabels
-      .append('text')
-      .attr('class', 'edge-label')
-      .attr('text-anchor', 'middle')
-      .attr('alignment-baseline', 'middle')
-      .text(d => {
-        const edge = historicalData.edges.find(
-          e => String(e.from) === d.source && String(e.to) === d.target
-        );
-        return edge?.attributes?.['3'] || '';
-      });
-
-    const nodeSel = g
-      .append('g')
-      .selectAll<SVGGElement, NodeDatum>('g')
-      .data(nodes)
-      .enter()
-      .append('g')
-      .attr('class', 'node');
+    const { nodeController, linkController, edgeController } = makeControllers(g, links, nodes);
 
     // Calculate initial DOI for each node
     const doiParams = {
@@ -237,73 +88,11 @@ export const NetworkVisualization: React.FC = () => {
       focusNode,
     };
 
-    nodes.forEach(node => {
+    for (const node of nodes) {
       node.doi = calculateDOI(node, nodes, doiParams);
-    });
+    }
 
-    nodeSel
-      .append('circle')
-      .attr('r', d => calculateNodeRadius(d, nodes))
-      .attr('fill', d => {
-        const baseColor = d3.schemeCategory10[d.group % 10];
-        const { h, s } = hexToHSL(baseColor);
-        const l = 90 - (d.doi || 0) * 60; // Scale DOI from 90% to 30% lightness
-        return hslToHex(h, s, l);
-      })
-      .attr('opacity', 1);
-
-    nodeSel
-      .append('text')
-      .text(d =>
-        d.name
-          .split(' ')
-          .map(part =>
-            part && part.length > 3
-              ? part[0]
-                  .split('(')[0]
-                  .replaceAll(/[^a-zA-Z0-9]/g, '')
-                  .toUpperCase()
-              : part || ''
-          )
-          .join('')
-      )
-      .attr('x', 0)
-      .attr('y', 0)
-      .attr('text-anchor', 'middle')
-      .attr('dominant-baseline', 'middle')
-      .attr('opacity', 1)
-      .style('font-size', '15px')
-      .attr('font-weight', 'bold')
-      .attr('fill', 'white');
-
-    const hideNonadjacent = (nodes: NodeDatum[]) => {
-      const nbrs = new Set();
-      nodes.forEach(d => {
-        const adj = neighborMap.get(d.id);
-        if (adj) {
-          adj.forEach(id => nbrs.add(id));
-        }
-        nbrs.add(d.id);
-      });
-
-      //Temporarily disabled hover opacity change
-
-      const LIGHT_OPACITY = 0.3;
-
-      nodeSel.style('opacity', nd => (nbrs.has(nd.id) ? 1 : LIGHT_OPACITY));
-      linkSel.style('opacity', lk =>
-        nbrs.has(lk.source) && nbrs.has(lk.target) ? 1 : LIGHT_OPACITY
-      );
-      edgeLabels.style('opacity', el =>
-        nbrs.has(el.source) && nbrs.has(el.target) ? 1 : LIGHT_OPACITY
-      );
-    };
-    const showNonadjacent = () => {
-      //Temporarily disabled hover opacity change
-      nodeSel.style('opacity', 1);
-      linkSel.style('opacity', 1);
-      edgeLabels.style('opacity', 1);
-    };
+    makeNodes(nodeController, nodes);
 
     const getNode = (id: string) => {
       return nodes.find(node => node.id === id);
@@ -317,7 +106,7 @@ export const NetworkVisualization: React.FC = () => {
     };
 
     const getLinkAction = (link: LinkData) => {
-      const transform = d3.zoomTransform(svgEl);
+      const transform = d3.zoomTransform(root);
 
       const source = getNode(link.source);
       const target = getNode(link.target);
@@ -346,7 +135,7 @@ export const NetworkVisualization: React.FC = () => {
           const { s, t } = getEndNodes(l);
           return s && t ? { source: s, target: t } : null;
         })
-        .filter((x): x is { source: NodeDatum; target: NodeDatum } => Boolean(x)),
+        .filter((x): x is { source: NodeData; target: NodeData } => Boolean(x)),
       {
         width,
         height,
@@ -356,11 +145,11 @@ export const NetworkVisualization: React.FC = () => {
       }
     );
     layoutRef.current = layout;
-    const positioned = layout.run() as NodeDatum[];
+    const positioned = layout.run() as NodeData[];
     setPositioned(positioned);
 
     function updateDisplay() {
-      linkSel
+      linkController
         .attr('x1', d => {
           const n = positioned.find(n => n.id === d.source);
           return n ? n.x : 0;
@@ -378,7 +167,7 @@ export const NetworkVisualization: React.FC = () => {
           return n ? n.y : 0;
         });
 
-      edgeLabels.attr('transform', d => {
+      edgeController.attr('transform', d => {
         const { s, t } = getEndNodes(d);
         const sx = s ? s.x : 0;
         const sy = s ? s.y : 0;
@@ -387,7 +176,7 @@ export const NetworkVisualization: React.FC = () => {
         return `translate(${(sx + tx) / 2},${(sy + ty) / 2})`;
       });
 
-      edgeLabels.each(function () {
+      edgeController.each(function () {
         const grp = d3.select(this);
         const txt = grp.select<SVGTextElement>('text').node() as SVGTextElement;
         const bb = txt.getBBox();
@@ -399,7 +188,7 @@ export const NetworkVisualization: React.FC = () => {
           .attr('height', bb.height + 2);
       });
 
-      nodeSel.attr('transform', d => {
+      nodeController.attr('transform', d => {
         const n = positioned.find(n => n.id === d.id);
         return n ? `translate(${n.x},${n.y})` : 'translate(0,0)';
       });
@@ -408,7 +197,7 @@ export const NetworkVisualization: React.FC = () => {
     updateDisplay();
 
     // Add event handlers
-    nodeSel
+    nodeController
       .on('mouseover', (event, d) => {
         const ttEl = tooltipRef.current;
         if (ttEl) {
@@ -419,30 +208,29 @@ export const NetworkVisualization: React.FC = () => {
             .style('top', `${event.pageY - 28}px`);
         }
         setFocusNode(d); // TODO: Later maybe change to click
-        hideNonadjacent([d]);
+        hideNonAdjacent([d], neighborMap, nodeController, linkController, edgeController);
       })
       .on('mouseout', () => {
         if (tooltipRef.current) d3.select(tooltipRef.current).style('opacity', 0);
         setFocusNode(undefined);
-        showNonadjacent();
+        showNonAdjacent(nodeController, linkController, edgeController);
       })
       .on('click', (event, d) => {
         switchSelected(d);
       });
 
     const defs = svg.append('defs');
-    linkSel
+    linkController
       .on('click', (_, d) => {
         const { to: next } = getLinkAction(d);
-        switchSelected(next as NodeDatum);
+        switchSelected(next as NodeData);
       })
-      .on('mouseover', function (_, d) {
-        const lineElem = this as SVGLineElement;
-        const lineSel = d3.select(lineElem);
-        const gradId = d.gradientId;
+      .on('mouseover', function (_, link) {
+        const controller = d3.select(this as SVGLineElement);
+        const gradId = link.gradientId;
         defs.select(`#${gradId}`).remove();
 
-        const { from, to } = getLinkAction(d);
+        const { from, to } = getLinkAction(link);
         if (!from || !to) return;
 
         const grad = defs
@@ -463,29 +251,30 @@ export const NetworkVisualization: React.FC = () => {
           .attr('offset', '100%')
           .attr('stop-color', d3.schemeCategory10[to.group % 10])
           .attr('stop-opacity', 1);
-        lineSel
+        controller
           .attr('stroke', `url(#${gradId})`)
           .attr('stroke-width', 10)
           .attr('stroke-opacity', 1);
 
-        const { s, t } = getEndNodes(d);
-        if (s && t) hideNonadjacent([s, t]);
+        const { s, t } = getEndNodes(link);
+        if (s && t)
+          hideNonAdjacent([s, t], neighborMap, nodeController, linkController, edgeController);
       })
-      .on('mouseout', function (_, d) {
-        const lineSel = d3.select(this);
-        defs.select(`#${d.gradientId}`).remove();
-        lineSel
+      .on('mouseout', function (_, link) {
+        const controller = d3.select(this);
+        defs.select(`#${link.gradientId}`).remove();
+        controller
           .attr('stroke', '#999')
-          .attr('stroke-width', Math.sqrt(d.value))
+          .attr('stroke-width', Math.sqrt(link.value))
           .attr('stroke-opacity', 0.6);
-        showNonadjacent();
+        showNonAdjacent(nodeController, linkController, edgeController);
       });
 
-    return () => {
-      clearInterval(intervalRef.current);
-    };
+    return () => clearInterval(intervalRef.current);
+
+    // Run only once for initial layout
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array - only run once for initial layout
+  }, []);
 
   // Separate useEffect for color updates
   useEffect(() => {
@@ -493,9 +282,8 @@ export const NetworkVisualization: React.FC = () => {
     if (!svgEl || !positioned.length) return;
 
     const g = d3.select(svgEl).select('g');
-    const nodeSel = g.selectAll<SVGGElement, NodeDatum>('g.node');
+    const nodeController = g.selectAll<SVGGElement, NodeData>('g.node');
 
-    // Update DOI values
     const doiParams = {
       searchQuery,
       selectedArchetypes,
@@ -508,7 +296,7 @@ export const NetworkVisualization: React.FC = () => {
     });
 
     // Update colors
-    nodeSel.selectAll<SVGCircleElement, NodeDatum>('circle').attr('fill', d => {
+    nodeController.selectAll<SVGCircleElement, NodeData>('circle').attr('fill', d => {
       const baseColor = d3.schemeCategory10[d.group % 10];
       const { h, s } = hexToHSL(baseColor);
       const l = 90 - (d.doi || 0) * 60;

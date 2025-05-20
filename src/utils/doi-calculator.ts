@@ -1,5 +1,5 @@
-import { NodeDatum } from '../types/d3';
 import historicalData from '../data/historical-data.json';
+import { NodeData } from './data';
 
 type DOIParams = {
   searchQuery: string;
@@ -8,16 +8,16 @@ type DOIParams = {
     min: number;
     max: number;
   };
-  focusNode?: NodeDatum;
+  focusNode?: NodeData;
 };
 
-const calculateAPIdiff = (node: NodeDatum, allNodes: NodeDatum[]): number => {
+const calculateAPIdiff = (node: NodeData, allNodes: NodeData[]): number => {
   const maxDegree = Math.max(...allNodes.map(n => n.degree || 0));
   const minDegree = Math.min(...allNodes.map(n => n.degree || 0));
   return (node.degree || 0 - minDegree) / (maxDegree - minDegree);
 };
 
-const calculateUIdiff = (node: NodeDatum, params: DOIParams): number => {
+const calculateUIdiff = (node: NodeData, params: DOIParams): number => {
   const searchRelevance = params.searchQuery
     ? node.name.toLowerCase().includes(params.searchQuery.toLowerCase())
       ? 1
@@ -46,14 +46,14 @@ const calculateUIdiff = (node: NodeDatum, params: DOIParams): number => {
 };
 
 const calculateJointDistance = (
-  node: NodeDatum,
-  focusNode: NodeDatum | undefined,
-  allNodes: NodeDatum[]
+  node: NodeData,
+  focusNode: NodeData | undefined,
+  allNodes: NodeData[]
 ): number => {
   if (!focusNode) return 0.5;
 
   const visited = new Set<string>();
-  const queue: { node: NodeDatum; distance: number }[] = [{ node: focusNode, distance: 0 }];
+  const queue: { node: NodeData; distance: number }[] = [{ node: focusNode, distance: 0 }];
   visited.add(focusNode.id);
 
   while (queue.length > 0) {
@@ -81,7 +81,7 @@ const calculateJointDistance = (
   return 0;
 };
 
-export const calculateDOI = (node: NodeDatum, allNodes: NodeDatum[], params: DOIParams): number => {
+export const calculateDOI = (node: NodeData, allNodes: NodeData[], params: DOIParams): number => {
   const apiDiff = calculateAPIdiff(node, allNodes);
   const uiDiff = calculateUIdiff(node, params);
   const jointDistance = calculateJointDistance(node, params.focusNode, allNodes);

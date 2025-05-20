@@ -1,4 +1,4 @@
-import { NodeDatum } from '../types/d3';
+import { NodeData } from '../utils/data';
 
 type Point = {
   x: number;
@@ -6,8 +6,8 @@ type Point = {
 };
 
 type Link = {
-  source: NodeDatum;
-  target: NodeDatum;
+  source: NodeData;
+  target: NodeData;
 };
 
 type Options = {
@@ -26,11 +26,11 @@ export class FruchtermanReingold {
   private k: number;
   private temperature: number;
   private coolingFactor: number;
-  private nodes: NodeDatum[];
+  private nodes: NodeData[];
   private links: Link[];
   private forces = new Map<string, Point>();
 
-  constructor(nodes: NodeDatum[], links: Link[], options: Options) {
+  constructor(nodes: NodeData[], links: Link[], options: Options) {
     this.nodes = nodes;
     this.links = links;
     this.width = options.width;
@@ -123,7 +123,7 @@ export class FruchtermanReingold {
     this.temperature *= this.coolingFactor;
   }
 
-  public run(): NodeDatum[] {
+  public run(): NodeData[] {
     for (let i = 0; i < this.iterations; i++) {
       this.step();
     }
