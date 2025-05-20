@@ -8,8 +8,9 @@ import { FruchtermanReingold } from '../layouts/FruchtermanReingold';
 import SearchResults from './SearchResults';
 import { DateRangeSlider } from './DateRangeSlider';
 import { NodeDatum } from '../types/NodeDatum';
-import { calculateDOI } from '../utils/utils';
+import { calculateNodeRadius } from '../utils/utils';
 import ArchetypeFilter from './ArchetypeFilter';
+import { calculateDOI } from '../utils/doiCalculator';
 
 interface LinkData {
   source: string;
@@ -29,6 +30,21 @@ export const NetworkVisualization: React.FC = () => {
     min: new Date('1910-01-01').getTime(),
     max: new Date('2024-01-01').getTime(),
   });
+  const [selectedArchetypes, setSelectedArchetypes] = useState<number[]>(
+    historicalData.vertexArchetypes.map((_, index) => index),
+  );
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleArchetypeChange = (newArchetypes: number[]) => {
+    setSelectedArchetypes(newArchetypes);
+  };
+
+  const handleDateRangeChange = (minDate: number, maxDate: number) => {
+    setDateRange({ min: minDate, max: maxDate });
+  };
 
   const switchSelected = (node: NodeDatum | string) => {
     const svgEl = svgRef.current;
@@ -53,13 +69,6 @@ export const NetworkVisualization: React.FC = () => {
         zoomBehaviorRef.current.transform,
         d3.zoomIdentity.translate(tx, ty).scale(scale),
       );
-  };
-  const [selectedArchetypes, setSelectedArchetypes] = useState<number[]>(
-    historicalData.vertexArchetypes.map((_, index) => index),
-  );
-
-  const handleDateRangeChange = (minDate: number, maxDate: number) => {
-    setDateRange({ min: minDate, max: maxDate });
   };
 
   useEffect(() => {
@@ -150,15 +159,30 @@ export const NetworkVisualization: React.FC = () => {
       .enter()
       .append('g')
       .attr('class', 'node');
+
+    // Calculate DOI for each node
+    const doiParams = {
+      searchQuery,
+      selectedArchetypes,
+      dateRange,
+    };
+
+    nodes.forEach(node => {
+      node.doi = calculateDOI(node, nodes, doiParams);
+    });
+
     nodeSel
       .append('circle')
-      .attr('r', (d) => calculateDOI(d, nodes))
-      .attr('fill', (d) => d3.schemeCategory10[d.group % 10]);
+      .attr('r', (d) => calculateNodeRadius(d, nodes))
+      .attr('fill', (d) => d3.schemeCategory10[d.group % 10])
+      .attr('opacity', (d) => 0.3 + (d.doi || 0) * 0.7);
+
     nodeSel
       .append('text')
       .text((d) => d.name)
       .attr('x', 8)
-      .attr('y', 3);
+      .attr('y', 3)
+      .attr('opacity', (d) => 0.3 + (d.doi || 0) * 0.7);
 
     const hideNonadjacent = (nodes: NodeDatum[]) => {
       const nbrs = new Set();
@@ -353,8 +377,43 @@ export const NetworkVisualization: React.FC = () => {
 
     updateDisplay();
 
+    // Update node opacity when filters change
+    const updateNodeOpacity = () => {
+      const doiParams = {
+        searchQuery,
+        selectedArchetypes,
+        dateRange,
+      };
+
+      nodes.forEach(node => {
+        node.doi = calculateDOI(node, nodes, doiParams);
+      });
+
+      nodeSel.selectAll<SVGCircleElement, NodeDatum>('circle')
+        .attr('opacity', (d) => 0.3 + (d.doi || 0) * 0.7);
+
+      nodeSel.selectAll<SVGTextElement, NodeDatum>('text')
+        .attr('opacity', (d) => 0.3 + (d.doi || 0) * 0.7);
+    };
+
+    // Add updateNodeOpacity to the component's state updates
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchQuery(e.target.value);
+      updateNodeOpacity();
+    };
+
+    const handleArchetypeChange = (newArchetypes: number[]) => {
+      setSelectedArchetypes(newArchetypes);
+      updateNodeOpacity();
+    };
+
+    const handleDateRangeChange = (minDate: number, maxDate: number) => {
+      setDateRange({ min: minDate, max: maxDate });
+      updateNodeOpacity();
+    };
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchQuery, selectedArchetypes, dateRange]); // Add dependencies to useEffect
 
   return (
     <div id="main-container">
@@ -369,7 +428,7 @@ export const NetworkVisualization: React.FC = () => {
               className="search-input"
               placeholder="Vyhledávat v záznamech.."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
             />
             <svg
               className="search-icon"
@@ -388,7 +447,7 @@ export const NetworkVisualization: React.FC = () => {
           </div>
           <ArchetypeFilter
             selectedArchetypes={selectedArchetypes}
-            onArchetypeChange={setSelectedArchetypes}
+            onArchetypeChange={handleArchetypeChange}
           />
           <DateRangeSlider onRangeChange={handleDateRangeChange} />
         </div>
