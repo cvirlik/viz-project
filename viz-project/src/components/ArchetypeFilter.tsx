@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Chip } from '@mui/material';
+import * as d3 from 'd3'; // Change to our color scheme later
 import historicalData from '../data/historical-data.json';
 import '../styles/ArchetypeFilter.css';
 
@@ -27,7 +28,19 @@ const ArchetypeFilter: React.FC<ArchetypeFilterProps> = ({
           key={index}
           label={archetype.name}
           onClick={() => handleChipClick(index)}
-          color={selectedArchetypes.includes(index) ? 'primary' : 'default'}
+          sx={{
+            backgroundColor: selectedArchetypes.includes(index)
+              ? d3.schemeCategory10[index % 10]
+              : 'transparent',
+            color: selectedArchetypes.includes(index)
+              ? 'white'
+              : d3.schemeCategory10[index % 10],
+            border: `1px solid ${d3.schemeCategory10[index % 10]}`,
+            '&:hover': {
+              backgroundColor: d3.schemeCategory10[index % 10],
+              color: 'white',
+            },
+          }}
           className="archetype-chip"
         />
       ))}
