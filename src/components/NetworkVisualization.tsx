@@ -9,6 +9,8 @@ import { initSvg } from '../utils/svg';
 import { hideNonAdjacent, makeGradient, showNonAdjacent } from '../utils/effects';
 import { Sidebar } from './Sidebar';
 import { DOIProvider, useDOI } from '../providers/doi';
+import { generateTooltipContent } from '../utils/tooltip';
+import historicalData from '../data/historical-data.json';
 
 const Body: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -181,16 +183,16 @@ const Body: React.FC = () => {
 
     // Add event handlers
     nodeController
-      .on('mouseover', (event, d) => {
+      .on('mouseover', async (event, d) => {
         const ttEl = tooltipRef.current;
         if (ttEl) {
           d3.select(ttEl)
             .style('opacity', 1)
-            .html(`<strong>${d.name}</strong><br/>Group: ${d.group}`)
+            .html(generateTooltipContent(d))
             .style('left', `${event.pageX + 10}px`)
             .style('top', `${event.pageY - 28}px`);
         }
-        setFocusNode(d); // TODO: Later maybe change to click
+        setFocusNode(d);
         hideNonAdjacent([d], neighborMap, nodeController, linkController, edgeController);
       })
       .on('mouseout', () => {
