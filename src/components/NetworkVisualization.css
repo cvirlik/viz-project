@@ -1,0 +1,35 @@
+.tooltip {
+  position: absolute;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  pointer-events: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: 300px;
+  z-index: 1000;
+}
+
+.tooltip-content {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.tooltip-content h3 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.tooltip-details {
+  color: #666;
+}
+
+.tooltip-details p {
+  margin: 4px 0;
+}
+
+.tooltip-details strong {
+  color: #444;
+  margin-right: 4px;
+}
