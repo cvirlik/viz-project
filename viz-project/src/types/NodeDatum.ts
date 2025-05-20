@@ -11,4 +11,5 @@ export interface NodeDatum extends SimulationNodeDatum {
   displayX?: number;
   displayY?: number;
   degree?: number;
+  doi?: number;
 }
