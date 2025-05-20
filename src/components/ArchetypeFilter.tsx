@@ -1,8 +1,7 @@
 import React from 'react';
 import { Box, Chip } from '@mui/material';
-import * as d3 from 'd3'; // Change to our color scheme later
+import * as d3 from 'd3';
 import historicalData from '../data/historical-data.json';
-import '../styles/ArchetypeFilter.css';
 
 type ArchetypeFilterProps = {
   selectedArchetypes: number[];

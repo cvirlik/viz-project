@@ -1,6 +1,5 @@
 import React from 'react';
 import { Slider, Box, Typography } from '@mui/material';
-import '../styles/DateRangeSlider.css';
 
 type DateRangeSliderProps = {
   onRangeChange: (minDate: number, maxDate: number) => void;

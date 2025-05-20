@@ -1,5 +1,4 @@
 import React from 'react';
-import '../styles/SearchBar.css';
 import historicalData from '../data/historical-data.json';
 
 type SearchResultsProps = {

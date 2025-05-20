@@ -1,4 +1,4 @@
-import { NodeDatum } from '../types/NodeDatum';
+import { NodeDatum } from '../types/d3';
 
 type Point = {
   x: number;

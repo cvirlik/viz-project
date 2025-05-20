@@ -1,4 +1,4 @@
-import { NodeDatum } from '../types/NodeDatum';
+import { NodeDatum } from '../types/d3';
 
 export const calculateNodeRadius = (node: NodeDatum, allNodes: NodeDatum[]) => {
   const baseSize = 30; // Base size for nodes

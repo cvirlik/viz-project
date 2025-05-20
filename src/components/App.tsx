@@ -2,8 +2,6 @@ import React from 'react';
 import { ThemeProvider, createTheme } from '@mui/material';
 import { NetworkVisualization } from './NetworkVisualization';
 
-import './index.css';
-
 const theme = createTheme({
   palette: {
     primary: {

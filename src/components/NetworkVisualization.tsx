@@ -1,13 +1,11 @@
+import historicalData from '../data/historical-data.json';
+
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import '../styles/NetworkVisualization.css';
-import '../styles/SearchBar.css';
-import '../styles/DateRangeSlider.css';
-import historicalData from '../data/historical-data.json';
-import { FruchtermanReingold } from '../layouts/FruchtermanReingold';
+import { FruchtermanReingold } from '../layouts/fruchterman';
 import SearchResults from './SearchResults';
 import { DateRangeSlider } from './DateRangeSlider';
-import { NodeDatum } from '../types/NodeDatum';
+import { NodeDatum } from '../types/d3';
 import { calculateNodeRadius } from '../utils/visual';
 import ArchetypeFilter from './ArchetypeFilter';
 import { calculateDOI } from '../utils/doi-calculator';
