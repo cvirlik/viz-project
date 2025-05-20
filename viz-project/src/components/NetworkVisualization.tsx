@@ -190,18 +190,78 @@ export const NetworkVisualization: React.FC = () => {
       node.doi = calculateDOI(node, nodes, doiParams);
     });
 
+    // Helper function to convert hex to HSL
+    const hexToHSL = (hex: string) => {
+      // Remove the hash if it exists
+      hex = hex.replace('#', '');
+
+      // Convert hex to RGB
+      const r = parseInt(hex.substring(0, 2), 16) / 255;
+      const g = parseInt(hex.substring(2, 4), 16) / 255;
+      const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+
+      let h = 0;
+      let s = 0;
+      const l = (max + min) / 2;
+
+      if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+        switch (max) {
+          case r:
+            h = (g - b) / d + (g < b ? 6 : 0);
+            break;
+          case g:
+            h = (b - r) / d + 2;
+            break;
+          case b:
+            h = (r - g) / d + 4;
+            break;
+        }
+
+        h /= 6;
+      }
+
+      return { h: h * 360, s: s * 100, l: l * 100 };
+    };
+
+    // Helper function to convert HSL to hex
+    const hslToHex = (h: number, s: number, l: number) => {
+      l /= 100;
+      const a = (s * Math.min(l, 1 - l)) / 100;
+
+      const f = (n: number) => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color)
+          .toString(16)
+          .padStart(2, '0');
+      };
+
+      return `#${f(0)}${f(8)}${f(4)}`;
+    };
+
     nodeSel
       .append('circle')
       .attr('r', (d) => calculateNodeRadius(d, nodes))
-      .attr('fill', (d) => d3.schemeCategory10[d.group % 10])
-      .attr('opacity', (d) => 0.3 + (d.doi || 0) * 0.7);
+      .attr('fill', (d) => {
+        const baseColor = d3.schemeCategory10[d.group % 10];
+        const { h, s } = hexToHSL(baseColor);
+        const l = 90 - (d.doi || 0) * 60; // Scale DOI from 90% to 30% lightness
+        return hslToHex(h, s, l);
+      })
+      .attr('opacity', 1);
 
     nodeSel
       .append('text')
       .text((d) => d.name)
       .attr('x', 8)
       .attr('y', 3)
-      .attr('opacity', (d) => 0.3 + (d.doi || 0) * 0.7);
+      .attr('opacity', 1);
 
     const hideNonadjacent = (nodes: NodeDatum[]) => {
       const nbrs = new Set();
@@ -213,18 +273,22 @@ export const NetworkVisualization: React.FC = () => {
         nbrs.add(d.id);
       });
 
+      /** Temporarily disabled hover opacity change
+      
       nodeSel.style('opacity', (nd) => (nbrs.has(nd.id) ? 1 : 0.1));
       linkSel.style('opacity', (lk) =>
         nbrs.has(lk.source) && nbrs.has(lk.target) ? 1 : 0.1,
       );
       edgeLabels.style('opacity', (el) =>
         nbrs.has(el.source) && nbrs.has(el.target) ? 1 : 0.1,
-      );
+      );*/
     };
     const showNonadjacent = () => {
+      /** Temporarily disabled hover opacity change
       nodeSel.style('opacity', 1);
       linkSel.style('opacity', 1);
       edgeLabels.style('opacity', 1);
+      */
     };
 
     const getNode = (id: string) => {
@@ -403,7 +467,7 @@ export const NetworkVisualization: React.FC = () => {
     updateDisplay();
 
     // Update node opacity when filters change
-    const updateNodeOpacity = () => {
+    const onNodeDoiChange = () => {
       const doiParams = {
         searchQuery,
         selectedArchetypes,
@@ -416,27 +480,28 @@ export const NetworkVisualization: React.FC = () => {
 
       nodeSel
         .selectAll<SVGCircleElement, NodeDatum>('circle')
-        .attr('opacity', (d) => 0.3 + (d.doi || 0) * 0.7);
-
-      nodeSel
-        .selectAll<SVGTextElement, NodeDatum>('text')
-        .attr('opacity', (d) => 0.3 + (d.doi || 0) * 0.7);
+        .attr('fill', (d) => {
+          const baseColor = d3.schemeCategory10[d.group % 10];
+          const { h, s } = hexToHSL(baseColor);
+          const l = 90 - (d.doi || 0) * 60; // Scale DOI from 90% to 30% lightness
+          return hslToHex(h, s, l);
+        });
     };
 
     // Add updateNodeOpacity to the component's state updates
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearchQuery(e.target.value);
-      updateNodeOpacity();
+      onNodeDoiChange();
     };
 
     const handleArchetypeChange = (newArchetypes: number[]) => {
       setSelectedArchetypes(newArchetypes);
-      updateNodeOpacity();
+      onNodeDoiChange();
     };
 
     const handleDateRangeChange = (minDate: number, maxDate: number) => {
       setDateRange({ min: minDate, max: maxDate });
-      updateNodeOpacity();
+      onNodeDoiChange();
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
