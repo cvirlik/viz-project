@@ -1,5 +1,4 @@
 import * as d3 from 'd3';
-import { EdgeController, LinkController, NodeController } from './d3-controllers';
 import { NodeData } from './data';
 
 export const makeGradient = (
