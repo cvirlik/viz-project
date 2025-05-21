@@ -10,6 +10,8 @@ import { makeGradient } from '../utils/effects';
 import { Sidebar } from './Sidebar';
 import { DOIProvider, useDOI } from '../providers/doi';
 import { generateTooltipContent } from '../utils/tooltip';
+import { extractInitials } from '../utils/string';
+import swEngData from '../data/SW-eng-anonymized-demo-graph.json';
 
 const Body: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -54,6 +56,17 @@ const Body: React.FC = () => {
 
     const { zoomBehavior, g, width, height, svg } = initSvg(root);
     zoomBehaviorRef.current = zoomBehavior;
+
+    // Add click handler for the SVG container to clear focus
+    svg.on('click', event => {
+      // Check if the click was directly on the SVG background
+      if (event.target === svg.node()) {
+        if (tooltipRef.current) {
+          d3.select(tooltipRef.current).style('opacity', 0);
+        }
+        setFocusNode(undefined);
+      }
+    });
 
     const { nodes, links, neighborMap } = parseData(width, height);
 
@@ -181,23 +194,34 @@ const Body: React.FC = () => {
     updateDisplay();
 
     // Add event handlers
-    nodeController
-      .on('mouseover', async (event, d) => {
-        const ttEl = tooltipRef.current;
-        if (ttEl) {
-          d3.select(ttEl)
-            .style('opacity', 1)
-            .html(generateTooltipContent(d))
-            .style('left', `${event.pageX + 10}px`)
-            .style('top', `${event.pageY - 28}px`);
+    nodeController.on('click', (event, d) => {
+      const ttEl = tooltipRef.current;
+      const container = document.getElementById('visualization-container');
+      if (ttEl && container) {
+        const containerRect = container.getBoundingClientRect();
+        d3.select(ttEl)
+          .style('opacity', 1)
+          .html(generateTooltipContent(d))
+          .style('left', `${containerRect.right - 400}px`)
+          .style('top', `${containerRect.top + 20}px`)
+          .style('right', 'auto');
+      }
+      setFocusNode(d);
+      setSelected(d);
+    });
+
+    // Add click handler for tooltip close button
+    if (tooltipRef.current) {
+      tooltipRef.current.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+        if (target.classList.contains('tooltip-close')) {
+          if (tooltipRef.current) {
+            d3.select(tooltipRef.current).style('opacity', 0);
+          }
+          setFocusNode(undefined);
         }
-        setFocusNode(d);
-      })
-      .on('mouseout', () => {
-        if (tooltipRef.current) d3.select(tooltipRef.current).style('opacity', 0);
-        setFocusNode(undefined);
-      })
-      .on('click', (_, node) => setSelected(node));
+      });
+    }
 
     const defs = svg.append('defs');
     linkController
@@ -249,13 +273,29 @@ const Body: React.FC = () => {
       node.doi = calculateDOI(node, positioned, doiParams);
     });
 
-    // Update colors
+    // Update colors and sort nodes by DOI
+    const sortedNodes = [...positioned].sort((a, b) => (a.doi || 0) - (b.doi || 0));
+
+    // Reorder nodes in the DOM based on DOI
+    nodeController.data(sortedNodes, d => d.id).order();
+
     nodeController.selectAll<SVGCircleElement, NodeData>('circle').attr('fill', d => {
       const baseColor = d3.schemeCategory10[d.group % 10];
       const { h, s } = hexToHSL(baseColor);
       // 100 je základ lightnes, druhým koeficientem se volí rozsah
       const l = 100 - (d.doi || 0) * 70;
       return hslToHex(h, s, l);
+    });
+
+    // Update node text with new DOI values
+    nodeController
+      .selectAll<SVGTextElement, NodeData>('text')
+      .text(d => `${extractInitials(d.name)} (${(d.doi || 0).toFixed(2)})`);
+
+    // Update z-index based on DOI
+    nodeController.attr('style', d => {
+      const doi = d.doi || 0;
+      return `z-index: ${Math.floor(doi * 100)};`;
     });
   }, [searchQuery, selectedArchetypes, dateRange, positioned, focusNode]); // Add focusNode to dependencies
 

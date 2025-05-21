@@ -28,7 +28,8 @@ const makeEdgeLabels = (g: SvgController, links: LinkData[]) => {
       const edge = rawData.edges.find(
         edge => String(edge.from) === link.source && String(edge.to) === link.target
       );
-      return edge?.attributes?.['3'] || '';
+      const attributes = edge?.attributes as Record<string, string> | undefined;
+      return attributes?.['3'] || '';
     });
 
   return edgeController;
@@ -72,7 +73,7 @@ export const makeNodes = (nodeController: NodeController, nodes: NodeData[]) => 
 
   nodeController
     .append('text')
-    .text(node => extractInitials(node.name))
+    .text(node => `${extractInitials(node.name)} (${(node.doi || 0).toFixed(2)})`)
     .attr('x', 0)
     .attr('y', 0)
     .attr('text-anchor', 'middle')

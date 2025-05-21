@@ -1,4 +1,4 @@
-import _rawData from '../data/historical-data.json';
+import _rawData from '../data/SW-eng-anonymized-demo-graph.json';
 
 export const rawData = _rawData;
 export type RawData = typeof rawData;
