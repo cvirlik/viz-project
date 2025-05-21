@@ -10,6 +10,7 @@ import { makeGradient } from '../utils/effects';
 import { Sidebar } from './Sidebar';
 import { DOIProvider, useDOI } from '../providers/doi';
 import { generateTooltipContent } from '../utils/tooltip';
+import swEngData from '../data/SW-eng-anonymized-demo-graph.json';
 
 const Body: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
