@@ -250,13 +250,24 @@ const Body: React.FC = () => {
       node.doi = calculateDOI(node, positioned, doiParams);
     });
 
-    // Update colors
+    // Update colors and sort nodes by DOI
+    const sortedNodes = [...positioned].sort((a, b) => (a.doi || 0) - (b.doi || 0));
+
+    // Reorder nodes in the DOM based on DOI
+    nodeController.data(sortedNodes, d => d.id).order();
+
     nodeController.selectAll<SVGCircleElement, NodeData>('circle').attr('fill', d => {
       const baseColor = d3.schemeCategory10[d.group % 10];
       const { h, s } = hexToHSL(baseColor);
       // 100 je základ lightnes, druhým koeficientem se volí rozsah
       const l = 100 - (d.doi || 0) * 70;
       return hslToHex(h, s, l);
+    });
+
+    // Update z-index based on DOI
+    nodeController.attr('style', d => {
+      const doi = d.doi || 0;
+      return `z-index: ${Math.floor(doi * 100)};`;
     });
   }, [searchQuery, selectedArchetypes, dateRange, positioned, focusNode]); // Add focusNode to dependencies
 
