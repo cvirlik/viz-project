@@ -73,7 +73,7 @@ export const makeNodes = (nodeController: NodeController, nodes: NodeData[]) => 
 
   nodeController
     .append('text')
-    .text(node => extractInitials(node.name))
+    .text(node => `${extractInitials(node.name)} (${(node.doi || 0).toFixed(2)})`)
     .attr('x', 0)
     .attr('y', 0)
     .attr('text-anchor', 'middle')

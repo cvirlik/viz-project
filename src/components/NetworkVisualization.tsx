@@ -10,6 +10,7 @@ import { makeGradient } from '../utils/effects';
 import { Sidebar } from './Sidebar';
 import { DOIProvider, useDOI } from '../providers/doi';
 import { generateTooltipContent } from '../utils/tooltip';
+import { extractInitials } from '../utils/string';
 import swEngData from '../data/SW-eng-anonymized-demo-graph.json';
 
 const Body: React.FC = () => {
@@ -263,6 +264,11 @@ const Body: React.FC = () => {
       const l = 100 - (d.doi || 0) * 70;
       return hslToHex(h, s, l);
     });
+
+    // Update node text with new DOI values
+    nodeController
+      .selectAll<SVGTextElement, NodeData>('text')
+      .text(d => `${extractInitials(d.name)} (${(d.doi || 0).toFixed(2)})`);
 
     // Update z-index based on DOI
     nodeController.attr('style', d => {
