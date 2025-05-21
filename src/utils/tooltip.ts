@@ -1,9 +1,15 @@
 import { NodeData } from './data';
-import historicalData from '../data/historical-data.json';
+import { rawData } from './data';
 
 export const generateTooltipContent = (d: NodeData): string => {
-  const vertex = historicalData.vertices.find(v => String(v.id) === d.id);
-  const archetype = historicalData.vertexArchetypes[d.group];
+  const vertex = rawData.vertices.find(v => String(v.id) === d.id);
+  const archetype = rawData.vertexArchetypes[d.group];
+
+  // Get all available attributes
+  const attributes = vertex?.attributes || {};
+  const attributeEntries = Object.entries(attributes).filter(
+    ([_, value]) => value !== undefined && value !== null
+  );
 
   return `
     <div class="tooltip-content">
@@ -11,9 +17,15 @@ export const generateTooltipContent = (d: NodeData): string => {
         <h3>${d.name}</h3>
         <div class="tooltip-details">
           <p><strong>Typ:</strong> ${archetype.name}</p>
-          ${vertex?.attributes['0'] ? `<p><strong>Popis:</strong> ${vertex.attributes['0']}</p>` : ''}
-          ${vertex?.attributes['1'] ? `<p><strong>Začátek:</strong> ${new Date(vertex.attributes['1']).toLocaleDateString('cs-CZ')}</p>` : ''}
-          ${vertex?.attributes['2'] ? `<p><strong>Konec:</strong> ${new Date(vertex.attributes['2']).toLocaleDateString('cs-CZ')}</p>` : ''}
+          ${attributeEntries
+            .map(([key, value]) => {
+              // Try to parse as date if it looks like a date
+              const isDate = typeof value === 'string' && !isNaN(Date.parse(value));
+              const displayValue = isDate ? new Date(value).toLocaleDateString('cs-CZ') : value;
+
+              return `<p><strong>${key}:</strong> ${displayValue}</p>`;
+            })
+            .join('')}
           <p><strong>Stupeň:</strong> ${d.degree || 0}</p>
           <!-- <p><strong>DOI:</strong> ${(d.doi || 0).toFixed(2)}</p> -->
         </div>
