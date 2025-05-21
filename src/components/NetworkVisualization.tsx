@@ -6,7 +6,7 @@ import { calculateDOI } from '../utils/doi-calculator';
 import { LinkData, NodeData, parseData } from '../utils/data';
 import { makeControllers, makeNodes } from '../utils/d3-controllers';
 import { initSvg } from '../utils/svg';
-import { hideNonAdjacent, makeGradient, showNonAdjacent } from '../utils/effects';
+import { makeGradient } from '../utils/effects';
 import { Sidebar } from './Sidebar';
 import { DOIProvider, useDOI } from '../providers/doi';
 import { generateTooltipContent } from '../utils/tooltip';
@@ -193,12 +193,10 @@ const Body: React.FC = () => {
             .style('top', `${event.pageY - 28}px`);
         }
         setFocusNode(d);
-        hideNonAdjacent([d], neighborMap, nodeController, linkController, edgeController);
       })
       .on('mouseout', () => {
         if (tooltipRef.current) d3.select(tooltipRef.current).style('opacity', 0);
         setFocusNode(undefined);
-        showNonAdjacent(nodeController, linkController, edgeController);
       })
       .on('click', (_, node) => setSelected(node));
 
@@ -217,10 +215,6 @@ const Body: React.FC = () => {
         if (!from || !to) return;
 
         makeGradient(gradId, from, to, defs, d3.select(this as SVGLineElement));
-
-        const { s, t } = getEndNodes(link);
-        if (s && t)
-          hideNonAdjacent([s, t], neighborMap, nodeController, linkController, edgeController);
       })
       .on('mouseout', function (_, link) {
         const controller = d3.select(this);
@@ -229,8 +223,6 @@ const Body: React.FC = () => {
           .attr('stroke', '#999')
           .attr('stroke-width', Math.sqrt(link.value))
           .attr('stroke-opacity', 0.6);
-
-        showNonAdjacent(nodeController, linkController, edgeController);
       });
 
     return () => clearInterval(intervalRef.current);
