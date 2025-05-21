@@ -1,14 +1,7 @@
 import { NodeData } from '../utils/data';
 
-type Point = {
-  x: number;
-  y: number;
-};
-
-type Link = {
-  source: NodeData;
-  target: NodeData;
-};
+type Point = { x: number; y: number };
+type Link = { source: NodeData; target: NodeData };
 
 type Options = {
   width: number;
@@ -17,116 +10,131 @@ type Options = {
   k?: number;
   temperature?: number;
   coolingFactor?: number;
+  rootRepulsion?: number;
+  isoRepulsion?: number;
 };
 
 export class FruchtermanReingold {
-  private width: number;
-  private height: number;
-  private iterations: number;
+  private w: number;
+  private h: number;
+  private iters: number;
   private k: number;
-  private temperature: number;
-  private coolingFactor: number;
+  private T: number;
+  private cool: number;
   private nodes: NodeData[];
   private links: Link[];
-  private forces = new Map<string, Point>();
+  private F = new Map<string, Point>();
 
-  constructor(nodes: NodeData[], links: Link[], options: Options) {
+  private activeRoots = new Set<string>();
+  private loneRoots = new Set<string>();
+  private rootPush: number;
+  private isoPush: number;
+
+  constructor(nodes: NodeData[], links: Link[], o: Options) {
     this.nodes = nodes;
     this.links = links;
-    this.width = options.width;
-    this.height = options.height;
-    this.iterations = options.iterations ?? 50;
-    this.k = options.k ?? Math.sqrt((this.width * this.height) / this.nodes.length);
-    this.temperature = options.temperature ?? this.width / 4;
-    this.coolingFactor = options.coolingFactor ?? 0.95;
+    this.w = o.width;
+    this.h = o.height;
+    this.iters = o.iterations ?? 50;
+    this.k = o.k ?? Math.sqrt((this.w * this.h) / nodes.length);
+    this.T = o.temperature ?? this.w / 4;
+    this.cool = o.coolingFactor ?? 0.95;
+    this.rootPush = o.rootRepulsion ?? 4;
+    this.isoPush = o.isoRepulsion ?? 0; // ← “don’t touch” isolated roots
+
+    /* classify nodes -------------------------------------------------------- */
+    const targets = new Set(links.map(l => l.target.id));
+    const deg = new Map<string, number>();
+    links.forEach(l => {
+      deg.set(l.source.id, (deg.get(l.source.id) ?? 0) + 1);
+      deg.set(l.target.id, (deg.get(l.target.id) ?? 0) + 1);
+    });
+
+    nodes.forEach(n => {
+      if (!targets.has(n.id)) {
+        const d = deg.get(n.id) ?? 0;
+        (d === 0 ? this.loneRoots : this.activeRoots).add(n.id);
+      }
+    });
   }
 
-  private calculateRepulsiveForces() {
-    this.forces.clear();
-    this.nodes.forEach(n => this.forces.set(n.id, { x: 0, y: 0 }));
+  /* forces ------------------------------------------------------------------ */
+  private repulsive() {
+    this.F.clear();
+    this.nodes.forEach(n => this.F.set(n.id, { x: 0, y: 0 }));
+
     for (let i = 0; i < this.nodes.length; i++) {
       for (let j = i + 1; j < this.nodes.length; j++) {
         const a = this.nodes[i],
           b = this.nodes[j];
         const dx = b.x - a.x,
-          dy = b.y - a.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist === 0) continue;
-        const force = (this.k * this.k) / dist;
-        const fx = (dx / dist) * force;
-        const fy = (dy / dist) * force;
-        const fa = this.forces.get(a.id),
-          fb = this.forces.get(b.id);
-        if (fa && fb) {
-          fa.x -= fx;
-          fa.y -= fy;
-          fb.x += fx;
-          fb.y += fy;
-        }
+          dy = b.y - a.y,
+          d = Math.hypot(dx, dy) || 1e-6;
+
+        let mult = 1; // normal pair
+        if (this.activeRoots.has(a.id) && this.activeRoots.has(b.id))
+          mult = this.rootPush; // root-root (children)
+        else if (this.loneRoots.has(a.id) || this.loneRoots.has(b.id)) mult = this.isoPush; // isolated root involved
+
+        const f = ((this.k * this.k) / d) * mult;
+        const fx = (dx / d) * f,
+          fy = (dy / d) * f;
+        this.F.get(a.id)!.x -= fx;
+        this.F.get(a.id)!.y -= fy;
+        this.F.get(b.id)!.x += fx;
+        this.F.get(b.id)!.y += fy;
       }
     }
   }
 
-  private calculateAttractiveForces() {
-    this.links.forEach(link => {
-      const dx = link.target.x - link.source.x;
-      const dy = link.target.y - link.source.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist === 0) return;
-      const force = (dist * dist) / this.k;
-      const fx = (dx / dist) * force;
-      const fy = (dy / dist) * force;
-      const fs = this.forces.get(link.source.id);
-      const ft = this.forces.get(link.target.id);
-      if (fs && ft) {
-        fs.x += fx;
-        fs.y += fy;
-        ft.x -= fx;
-        ft.y -= fy;
-      }
+  private attractive() {
+    this.links.forEach(l => {
+      const dx = l.target.x - l.source.x,
+        dy = l.target.y - l.source.y;
+      const d = Math.hypot(dx, dy) || 1e-6;
+      const f = (d * d) / this.k;
+      const fx = (dx / d) * f,
+        fy = (dy / d) * f;
+      this.F.get(l.source.id)!.x += fx;
+      this.F.get(l.source.id)!.y += fy;
+      this.F.get(l.target.id)!.x -= fx;
+      this.F.get(l.target.id)!.y -= fy;
     });
   }
 
-  private calculateCenteringForces(strength = 0.1) {
-    const cx = this.width / 2,
-      cy = this.height / 2;
+  private center(str = 0.1) {
+    const cx = this.w / 2,
+      cy = this.h / 2;
     this.nodes.forEach(n => {
-      const f = this.forces.get(n.id);
-      if (f) {
-        f.x += (cx - n.x) * strength;
-        f.y += (cy - n.y) * strength;
-      }
+      const f = this.F.get(n.id)!;
+      f.x += (cx - n.x) * str;
+      f.y += (cy - n.y) * str;
     });
   }
 
-  private updatePositions() {
+  private move() {
     this.nodes.forEach(n => {
-      if (n.fx == null && n.fy == null) {
-        const f = this.forces.get(n.id);
-        if (f) {
-          const mag = Math.hypot(f.x, f.y);
-          if (mag > 0) {
-            const step = Math.min(mag, this.temperature);
-            n.x += (f.x / mag) * step;
-            n.y += (f.y / mag) * step;
-          }
-        }
-      }
+      if (n.fx != null || n.fy != null) return;
+      const f = this.F.get(n.id)!;
+      const m = Math.hypot(f.x, f.y);
+      if (!m) return;
+      const step = Math.min(m, this.T);
+      n.x += (f.x / m) * step;
+      n.y += (f.y / m) * step;
     });
   }
 
-  public step(): void {
-    this.calculateRepulsiveForces();
-    this.calculateAttractiveForces();
-    this.calculateCenteringForces();
-    this.updatePositions();
-    this.temperature *= this.coolingFactor;
+  /* API --------------------------------------------------------------------- */
+  public step() {
+    this.repulsive();
+    this.attractive();
+    this.center();
+    this.move();
+    this.T *= this.cool;
   }
 
   public run(): NodeData[] {
-    for (let i = 0; i < this.iterations; i++) {
-      this.step();
-    }
+    for (let i = 0; i < this.iters; i++) this.step();
     return this.nodes;
   }
 }

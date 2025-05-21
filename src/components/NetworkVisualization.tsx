@@ -137,6 +137,7 @@ const Body: React.FC = () => {
         iterations: 1,
         temperature: width / 4,
         coolingFactor: 0.95,
+        isoRepulsion: 0.03,
       }
     );
     layoutRef.current = layout;
