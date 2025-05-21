@@ -13,6 +13,7 @@ export const generateTooltipContent = (d: NodeData): string => {
 
   return `
     <div class="tooltip-content">
+      <button class="tooltip-close">×</button>
       <div class="tooltip-text">
         <h3>${d.name}</h3>
         <div class="tooltip-details">

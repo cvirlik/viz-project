@@ -57,6 +57,17 @@ const Body: React.FC = () => {
     const { zoomBehavior, g, width, height, svg } = initSvg(root);
     zoomBehaviorRef.current = zoomBehavior;
 
+    // Add click handler for the SVG container to clear focus
+    svg.on('click', event => {
+      // Check if the click was directly on the SVG background
+      if (event.target === svg.node()) {
+        if (tooltipRef.current) {
+          d3.select(tooltipRef.current).style('opacity', 0);
+        }
+        setFocusNode(undefined);
+      }
+    });
+
     const { nodes, links, neighborMap } = parseData(width, height);
 
     for (const node of nodes) {
@@ -183,25 +194,34 @@ const Body: React.FC = () => {
     updateDisplay();
 
     // Add event handlers
-    nodeController
-      .on('mouseover', async (event, d) => {
-        const ttEl = tooltipRef.current;
-        const container = document.getElementById('visualization-container');
-        if (ttEl && container) {
-          const containerRect = container.getBoundingClientRect();
-          d3.select(ttEl)
-            .style('opacity', 1)
-            .html(generateTooltipContent(d))
-            .style('left', `${containerRect.right - 320}px`)
-            .style('top', `${containerRect.top + 20}px`);
+    nodeController.on('click', (event, d) => {
+      const ttEl = tooltipRef.current;
+      const container = document.getElementById('visualization-container');
+      if (ttEl && container) {
+        const containerRect = container.getBoundingClientRect();
+        d3.select(ttEl)
+          .style('opacity', 1)
+          .html(generateTooltipContent(d))
+          .style('left', `${containerRect.right - 400}px`)
+          .style('top', `${containerRect.top + 20}px`)
+          .style('right', 'auto');
+      }
+      setFocusNode(d);
+      setSelected(d);
+    });
+
+    // Add click handler for tooltip close button
+    if (tooltipRef.current) {
+      tooltipRef.current.addEventListener('click', e => {
+        const target = e.target as HTMLElement;
+        if (target.classList.contains('tooltip-close')) {
+          if (tooltipRef.current) {
+            d3.select(tooltipRef.current).style('opacity', 0);
+          }
+          setFocusNode(undefined);
         }
-        setFocusNode(d);
-      })
-      .on('mouseout', () => {
-        if (tooltipRef.current) d3.select(tooltipRef.current).style('opacity', 0);
-        setFocusNode(undefined);
-      })
-      .on('click', (_, node) => setSelected(node));
+      });
+    }
 
     const defs = svg.append('defs');
     linkController
