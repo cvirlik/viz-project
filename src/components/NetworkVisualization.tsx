@@ -276,15 +276,26 @@ const Body: React.FC = () => {
     // Update colors and sort nodes by DOI
     const sortedNodes = [...positioned].sort((a, b) => (a.doi || 0) - (b.doi || 0));
 
-    // Create a set of visible node IDs (DOI >= 0.25)
-    const visibleNodes = new Set(
-      sortedNodes.filter(node => (node.doi || 0) >= 0.25).map(node => node.id)
-    );
-
     // Reorder nodes in the DOM based on DOI
     nodeController.data(sortedNodes, d => d.id).order();
 
-    nodeController.selectAll<SVGCircleElement, NodeData>('circle').attr('fill', d => {
+    console.log('SORTED COUNT: ' + sortedNodes.length);
+
+    nodeController.attr('visibility', d => {
+      return (d.doi || 0) < 0.25 ? 'hidden' : 'visible';
+    });
+
+    // Update edge visibility based on connected nodes' DOI
+    const linkController = g.selectAll<SVGLineElement, LinkData>('line');
+    linkController.attr('visibility', (d: LinkData) => {
+      const sourceNode = positioned.find(n => n.id === d.source);
+      const targetNode = positioned.find(n => n.id === d.target);
+      const sourceDOI = sourceNode?.doi || 0;
+      const targetDOI = targetNode?.doi || 0;
+      return sourceDOI >= 0.25 || targetDOI >= 0.25 ? 'visible' : 'hidden';
+    });
+
+    nodeController.selectAll<SVGCircleElement, NodeData>('circle').attr('fill', (d: NodeData) => {
       const baseColor = d3.schemeCategory10[d.group % 10];
       const { h, s } = hexToHSL(baseColor);
       // 100 je základ lightnes, druhým koeficientem se volí rozsah
@@ -295,10 +306,10 @@ const Body: React.FC = () => {
     // Update node text with new DOI values
     nodeController
       .selectAll<SVGTextElement, NodeData>('text')
-      .text(d => `${extractInitials(d.name)} (${(d.doi || 0).toFixed(2)})`);
+      .text((d: NodeData) => `${extractInitials(d.name)} (${(d.doi || 0).toFixed(2)})`);
 
     // Update z-index based on DOI
-    nodeController.attr('style', d => {
+    nodeController.attr('style', (d: NodeData) => {
       const doi = d.doi || 0;
       return `z-index: ${Math.floor(doi * 100)};`;
     });
