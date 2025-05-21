@@ -40,7 +40,7 @@ const Body: React.FC = () => {
     if (!data) return;
 
     const current = d3.zoomTransform(svgEl);
-    const scale = current.k > 1.2 ? current.k : 1.2;
+    const scale = current.k > 0.8 ? current.k : 0.8;
     const tx = width / 2 - data.x * scale;
     const ty = height / 2 - data.y * scale;
     svg
