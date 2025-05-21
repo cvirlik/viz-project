@@ -10,8 +10,6 @@ import { makeGradient } from '../utils/effects';
 import { Sidebar } from './Sidebar';
 import { DOIProvider, useDOI } from '../providers/doi';
 import { generateTooltipContent } from '../utils/tooltip';
-import { extractInitials } from '../utils/string';
-import swEngData from '../data/SW-eng-anonymized-demo-graph.json';
 
 const Body: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -231,6 +229,7 @@ const Body: React.FC = () => {
         setSelected(next);
       })
       .on('mouseover', function (_, link) {
+        edgeController.filter(d => d === link).style('opacity', 1);
         const gradId = link.gradientId;
         defs.select(`#${gradId}`).remove();
 
@@ -240,6 +239,7 @@ const Body: React.FC = () => {
         makeGradient(gradId, from, to, defs, d3.select(this as SVGLineElement));
       })
       .on('mouseout', function (_, link) {
+        edgeController.filter(d => d === link).style('opacity', 0);
         const controller = d3.select(this);
         defs.select(`#${link.gradientId}`).remove();
         controller
@@ -286,11 +286,6 @@ const Body: React.FC = () => {
       const l = 100 - (d.doi || 0) * 70;
       return hslToHex(h, s, l);
     });
-
-    // Update node text with new DOI values
-    nodeController
-      .selectAll<SVGTextElement, NodeData>('text')
-      .text(d => `${extractInitials(d.name)} (${(d.doi || 0).toFixed(2)})`);
 
     // Update z-index based on DOI
     nodeController.attr('style', d => {

@@ -8,14 +8,15 @@ export type NodeController = d3.Selection<SVGGElement, NodeData, SVGGElement, un
 export type EdgeController = d3.Selection<SVGGElement, LinkData, SVGGElement, unknown>;
 export type LinkController = d3.Selection<SVGLineElement, LinkData, SVGGElement, unknown>;
 
-const makeEdgeLabels = (g: SvgController, links: LinkData[]) => {
+const makeEdgeLabels = (g: SvgController, linkController: LinkController, links: LinkData[]) => {
   const edgeController = g
     .append('g')
     .selectAll<SVGGElement, LinkData>('g.edge-label-group')
     .data(links)
     .enter()
     .append('g')
-    .attr('class', 'edge-label-group');
+    .attr('class', 'edge-label-group')
+    .style('opacity', 0); // Initially hidden
 
   edgeController.append('rect').attr('class', 'edge-label-bg').attr('fill', 'white');
 
@@ -29,7 +30,17 @@ const makeEdgeLabels = (g: SvgController, links: LinkData[]) => {
         edge => String(edge.from) === link.source && String(edge.to) === link.target
       );
       const attributes = edge?.attributes as Record<string, string> | undefined;
-      return attributes?.['3'] || '';
+      return attributes?.['3'] ?? (attributes ? attributes[Object.keys(attributes)[0]] : '');
+    });
+
+  // Show labels on hover
+  linkController
+    .on('mouseover', function (_, link) {
+      console.log(link);
+      edgeController.filter(d => d === link).style('opacity', 1); // Show the label
+    })
+    .on('mouseout', function (_, link) {
+      edgeController.filter(d => d === link).style('opacity', 0); // Hide the label
     });
 
   return edgeController;
@@ -54,7 +65,7 @@ export const makeControllers = (g: SvgController, links: LinkData[], nodes: Node
     .append('g')
     .attr('class', 'node');
 
-  const edgeController = makeEdgeLabels(g, links);
+  const edgeController = makeEdgeLabels(g, linkController, links);
 
   return { linkController, nodeController, edgeController };
 };
@@ -73,7 +84,7 @@ export const makeNodes = (nodeController: NodeController, nodes: NodeData[]) => 
 
   nodeController
     .append('text')
-    .text(node => `${extractInitials(node.name)} (${(node.doi || 0).toFixed(2)})`)
+    .text(node => `${extractInitials(node.name)}`) // (${(node.doi || 0).toFixed(2)})
     .attr('x', 0)
     .attr('y', 0)
     .attr('text-anchor', 'middle')
