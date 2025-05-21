@@ -276,6 +276,11 @@ const Body: React.FC = () => {
     // Update colors and sort nodes by DOI
     const sortedNodes = [...positioned].sort((a, b) => (a.doi || 0) - (b.doi || 0));
 
+    // Create a set of visible node IDs (DOI >= 0.25)
+    const visibleNodes = new Set(
+      sortedNodes.filter(node => (node.doi || 0) >= 0.25).map(node => node.id)
+    );
+
     // Reorder nodes in the DOM based on DOI
     nodeController.data(sortedNodes, d => d.id).order();
 
@@ -297,7 +302,7 @@ const Body: React.FC = () => {
       const doi = d.doi || 0;
       return `z-index: ${Math.floor(doi * 100)};`;
     });
-  }, [searchQuery, selectedArchetypes, dateRange, positioned, focusNode]); // Add focusNode to dependencies
+  }, [searchQuery, selectedArchetypes, dateRange, positioned, focusNode]);
 
   useEffect(() => {
     if (isRunning) {
