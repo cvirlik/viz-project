@@ -186,12 +186,14 @@ const Body: React.FC = () => {
     nodeController
       .on('mouseover', async (event, d) => {
         const ttEl = tooltipRef.current;
-        if (ttEl) {
+        const container = document.getElementById('visualization-container');
+        if (ttEl && container) {
+          const containerRect = container.getBoundingClientRect();
           d3.select(ttEl)
             .style('opacity', 1)
             .html(generateTooltipContent(d))
-            .style('left', `${event.pageX + 10}px`)
-            .style('top', `${event.pageY - 28}px`);
+            .style('left', `${containerRect.right - 320}px`)
+            .style('top', `${containerRect.top + 20}px`);
         }
         setFocusNode(d);
       })
