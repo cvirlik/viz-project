@@ -10,7 +10,6 @@ export const calculateNodeRadius = (node: NodeData, allNodes: NodeData[]) => {
 
   const normalizedDegree = (node.degree || 0 - minDegree) / (maxDegree - minDegree);
 
-  console.log(Math.min(baseSize + normalizedDegree * (maxSize - baseSize), maxSize));
   return Math.min(baseSize + normalizedDegree * (maxSize - baseSize), maxSize);
 };
 

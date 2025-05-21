@@ -33,16 +33,6 @@ const makeEdgeLabels = (g: SvgController, linkController: LinkController, links:
       return attributes?.['3'] ?? (attributes ? attributes[Object.keys(attributes)[0]] : '');
     });
 
-  // Show labels on hover
-  linkController
-    .on('mouseover', function (_, link) {
-      console.log(link);
-      edgeController.filter(d => d === link).style('opacity', 1); // Show the label
-    })
-    .on('mouseout', function (_, link) {
-      edgeController.filter(d => d === link).style('opacity', 0); // Hide the label
-    });
-
   return edgeController;
 };
 
