@@ -101,6 +101,22 @@ const Body: React.FC = () => {
 
     makeNodes(nodeController, nodes);
 
+    const handleNodeClick = (d: NodeData) => {
+      const ttEl = tooltipRef.current;
+      const container = document.getElementById('visualization-container');
+      if (ttEl && container) {
+        const containerRect = container.getBoundingClientRect();
+        d3.select(ttEl)
+          .style('opacity', 1)
+          .html(generateTooltipContent(d))
+          .style('left', `${containerRect.right - 400}px`)
+          .style('top', `${containerRect.top + 20}px`)
+          .style('right', 'auto');
+      }
+      setFocusNode(d);
+      setSelected(d);
+    };
+
     const getNode = (id: string) => {
       return nodes.find(node => node.id === id);
     };
@@ -205,49 +221,7 @@ const Body: React.FC = () => {
     updateDisplay();
 
     // Add event handlers
-    nodeController.on('click', (event, d) => {
-      const ttEl = tooltipRef.current;
-      const container = document.getElementById('visualization-container');
-      if (ttEl && container) {
-        const containerRect = container.getBoundingClientRect();
-        d3.select(ttEl)
-          .style('opacity', 1)
-          .html(generateTooltipContent(d))
-          .style('left', `${containerRect.right - 400}px`)
-          .style('top', `${containerRect.top + 20}px`)
-          .style('right', 'auto');
-      }
-      setFocusNode(d);
-      setSelected(d);
-    });
-
-    // Add click handler for tooltip close button
-    if (tooltipRef.current) {
-      tooltipRef.current.addEventListener('click', e => {
-        const target = e.target as HTMLElement;
-        if (target.classList.contains('tooltip-close')) {
-          if (tooltipRef.current) {
-            d3.select(tooltipRef.current).style('opacity', 0);
-          }
-          setFocusNode(undefined);
-        }
-      });
-    }
-    nodeController.on('click', (event, d) => {
-      const ttEl = tooltipRef.current;
-      const container = document.getElementById('visualization-container');
-      if (ttEl && container) {
-        const containerRect = container.getBoundingClientRect();
-        d3.select(ttEl)
-          .style('opacity', 1)
-          .html(generateTooltipContent(d))
-          .style('left', `${containerRect.right - 400}px`)
-          .style('top', `${containerRect.top + 20}px`)
-          .style('right', 'auto');
-      }
-      setFocusNode(d);
-      setSelected(d);
-    });
+    nodeController.on('click', (_, d) => handleNodeClick(d));
 
     // Add click handler for tooltip close button
     if (tooltipRef.current) {
@@ -267,7 +241,7 @@ const Body: React.FC = () => {
       .on('click', (_, d) => {
         const { to: next } = getLinkAction(d);
         if (!next) return;
-        setSelected(next);
+        handleNodeClick(next);
       })
       .on('mouseover', function (_, link) {
         const gradId = link.gradientId;
