@@ -254,7 +254,8 @@ const Body: React.FC = () => {
     nodeController.selectAll<SVGCircleElement, NodeData>('circle').attr('fill', d => {
       const baseColor = d3.schemeCategory10[d.group % 10];
       const { h, s } = hexToHSL(baseColor);
-      const l = 90 - (d.doi || 0) * 60;
+      // 100 je základ lightnes, druhým koeficientem se volí rozsah
+      const l = 100 - (d.doi || 0) * 70;
       return hslToHex(h, s, l);
     });
   }, [searchQuery, selectedArchetypes, dateRange, positioned, focusNode]); // Add focusNode to dependencies
