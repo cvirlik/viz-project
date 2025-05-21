@@ -45,36 +45,40 @@ const calculateUIdiff = (node: NodeData, params: DOIParams): number => {
   );
 };
 
-const calculateJointDistance = (
-  node: NodeData,
-  focusNode: NodeData | undefined,
-  allNodes: NodeData[]
-): number => {
+const buildAdjacencyList = (edges: typeof historicalData.edges): Record<string, string[]> => {
+  const adjacencyList: Record<string, string[]> = {};
+  for (const edge of edges) {
+    const from = String(edge.from);
+    const to = String(edge.to);
+    if (!adjacencyList[from]) adjacencyList[from] = [];
+    if (!adjacencyList[to]) adjacencyList[to] = [];
+    adjacencyList[from].push(to);
+    adjacencyList[to].push(from);
+  }
+  return adjacencyList;
+};
+
+const calculateJointDistance = (node: NodeData, focusNode: NodeData | undefined): number => {
   if (!focusNode) return 0.5;
 
+  const adjacencyList = buildAdjacencyList(historicalData.edges);
   const visited = new Set<string>();
-  const queue: { node: NodeData; distance: number }[] = [{ node: focusNode, distance: 0 }];
+  const queue: { id: string; distance: number }[] = [{ id: focusNode.id, distance: 0 }];
   visited.add(focusNode.id);
 
   while (queue.length > 0) {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const { node: current, distance } = queue.shift()!;
-    if (current.id === node.id) {
+    const { id: currentId, distance } = queue.shift()!;
+    if (currentId === node.id) {
       return Math.max(0, 1 - distance / 5);
     }
 
-    const neighbors = allNodes.filter(n => {
-      const isNeighbor = historicalData.edges.some(
-        edge =>
-          (String(edge.from) === current.id && String(edge.to) === n.id) ||
-          (String(edge.from) === n.id && String(edge.to) === current.id)
-      );
-      return isNeighbor && !visited.has(n.id);
-    });
-
-    neighbors.forEach(neighbor => {
-      visited.add(neighbor.id);
-      queue.push({ node: neighbor, distance: distance + 1 });
+    const neighbors = adjacencyList[currentId] || [];
+    neighbors.forEach(neighborId => {
+      if (!visited.has(neighborId)) {
+        visited.add(neighborId);
+        queue.push({ id: neighborId, distance: distance + 1 });
+      }
     });
   }
 
@@ -84,7 +88,7 @@ const calculateJointDistance = (
 export const calculateDOI = (node: NodeData, allNodes: NodeData[], params: DOIParams): number => {
   const apiDiff = calculateAPIdiff(node, allNodes);
   const uiDiff = calculateUIdiff(node, params);
-  const jointDistance = calculateJointDistance(node, params.focusNode, allNodes);
+  const jointDistance = calculateJointDistance(node, params.focusNode);
 
   // Weights for the equation: DOI(x | y,z) = α*APIdiff(x) + β*UIdiff(x,z) + JD(x,y)
   const weights = {
