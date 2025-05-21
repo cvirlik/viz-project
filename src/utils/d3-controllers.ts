@@ -28,7 +28,8 @@ const makeEdgeLabels = (g: SvgController, links: LinkData[]) => {
       const edge = rawData.edges.find(
         edge => String(edge.from) === link.source && String(edge.to) === link.target
       );
-      return edge?.attributes?.['3'] || '';
+      const attributes = edge?.attributes as Record<string, string> | undefined;
+      return attributes?.['3'] || '';
     });
 
   return edgeController;
