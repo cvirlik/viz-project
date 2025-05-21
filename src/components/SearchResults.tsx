@@ -1,5 +1,6 @@
 import React from 'react';
-import historicalData from '../data/historical-data.json';
+import swEngData from '../data/SW-eng-anonymized-demo-graph.json';
+import { NodeData } from '../utils/data';
 
 type SearchResultsProps = {
   searchQuery: string;
@@ -9,6 +10,8 @@ type SearchResultsProps = {
   };
   selectedArchetypes: number[];
   onResultClick: (nodeId: string) => void;
+  handleNodeClick: (node: NodeData) => void;
+  positioned: NodeData[];
 };
 
 const SearchResults: React.FC<SearchResultsProps> = ({
@@ -16,8 +19,10 @@ const SearchResults: React.FC<SearchResultsProps> = ({
   dateRange,
   selectedArchetypes,
   onResultClick,
+  handleNodeClick,
+  positioned,
 }) => {
-  const filteredResults = historicalData.vertices
+  const filteredResults = swEngData.vertices
     .filter(vertex => {
       const matchesSearch =
         searchQuery === '' || vertex.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -37,15 +42,27 @@ const SearchResults: React.FC<SearchResultsProps> = ({
     .map(vertex => ({
       id: String(vertex.id),
       title: vertex.title,
-      type: historicalData.vertexArchetypes[vertex.archetype],
+      type: swEngData.vertexArchetypes[vertex.archetype],
     }));
+
+  const handleResultClick = (resultId: string) => {
+    onResultClick(resultId);
+    const node = positioned.find(n => n.id === resultId);
+    if (node) {
+      handleNodeClick(node);
+    }
+  };
 
   return (
     <div className="search-results">
       {filteredResults.length > 0 ? (
         <div className="results-list">
           {filteredResults.map(result => (
-            <div key={result.id} className="result-item" onClick={() => onResultClick(result.id)}>
+            <div
+              key={result.id}
+              className="result-item"
+              onClick={() => handleResultClick(result.id)}
+            >
               <div className="result-title">{result.title}</div>
               <div className="result-type">{result.type.name}</div>
             </div>

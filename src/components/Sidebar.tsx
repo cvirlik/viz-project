@@ -4,14 +4,23 @@ import ArchetypeFilter from './ArchetypeFilter';
 import { DateRangeSlider } from './DateRangeSlider';
 import SearchResults from './SearchResults';
 import { useDOI } from '../providers/doi';
+import { NodeData } from '../utils/data';
 
 export type SidebarProps = {
   isRunning: boolean;
   setIsRunning: (running: boolean) => void;
   setSelected: (selected: string) => void;
+  handleNodeClick: (node: NodeData) => void;
+  positioned: NodeData[];
 };
 
-export const Sidebar: React.FC<SidebarProps> = ({ isRunning, setIsRunning, setSelected }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  isRunning,
+  setIsRunning,
+  setSelected,
+  handleNodeClick,
+  positioned,
+}) => {
   const {
     searchQuery,
     selectedArchetypes,
@@ -80,6 +89,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isRunning, setIsRunning, setSe
         dateRange={dateRange}
         selectedArchetypes={selectedArchetypes}
         onResultClick={setSelected}
+        handleNodeClick={handleNodeClick}
+        positioned={positioned}
       />
     </div>
   );

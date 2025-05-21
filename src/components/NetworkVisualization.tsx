@@ -28,6 +28,22 @@ const Body: React.FC = () => {
   const intervalRef = useRef<number>();
   const [isRunning, setIsRunning] = useState(false);
 
+  const handleNodeClick = (d: NodeData) => {
+    const ttEl = tooltipRef.current;
+    const container = document.getElementById('visualization-container');
+    if (ttEl && container) {
+      const containerRect = container.getBoundingClientRect();
+      d3.select(ttEl)
+        .style('opacity', 1)
+        .html(generateTooltipContent(d))
+        .style('left', `${containerRect.right - 400}px`)
+        .style('top', `${containerRect.top + 20}px`)
+        .style('right', 'auto');
+    }
+    setFocusNode(d);
+    setSelected(d);
+  };
+
   const setSelected = (selected: NodeData | string) => {
     const svgEl = svgRef.current;
     if (!svgEl || !zoomBehaviorRef.current) return;
@@ -100,22 +116,6 @@ const Body: React.FC = () => {
     }
 
     makeNodes(nodeController, nodes);
-
-    const handleNodeClick = (d: NodeData) => {
-      const ttEl = tooltipRef.current;
-      const container = document.getElementById('visualization-container');
-      if (ttEl && container) {
-        const containerRect = container.getBoundingClientRect();
-        d3.select(ttEl)
-          .style('opacity', 1)
-          .html(generateTooltipContent(d))
-          .style('left', `${containerRect.right - 400}px`)
-          .style('top', `${containerRect.top + 20}px`)
-          .style('right', 'auto');
-      }
-      setFocusNode(d);
-      setSelected(d);
-    };
 
     const getNode = (id: string) => {
       return nodes.find(node => node.id === id);
@@ -347,7 +347,13 @@ const Body: React.FC = () => {
       <div id="visualization-container">
         <svg id="visualization" ref={svgRef} />
       </div>
-      <Sidebar isRunning={isRunning} setIsRunning={setIsRunning} setSelected={setSelected} />
+      <Sidebar
+        isRunning={isRunning}
+        setIsRunning={setIsRunning}
+        setSelected={setSelected}
+        handleNodeClick={handleNodeClick}
+        positioned={positioned}
+      />
       <div id="tooltip" className="tooltip" ref={tooltipRef}></div>
     </div>
   );
