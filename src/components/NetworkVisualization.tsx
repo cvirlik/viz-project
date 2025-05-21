@@ -187,26 +187,34 @@ const Body: React.FC = () => {
         const n = positioned.find(n => n.id === d.id);
         return n ? `translate(${n.x},${n.y})` : 'translate(0,0)';
       });
+
+      nodeController.raise();
     }
     updateDisplayRef.current = updateDisplay;
     updateDisplay();
 
     // Add event handlers
-    nodeController.on('click', (event, d) => {
-      const ttEl = tooltipRef.current;
-      const container = document.getElementById('visualization-container');
-      if (ttEl && container) {
-        const containerRect = container.getBoundingClientRect();
-        d3.select(ttEl)
-          .style('opacity', 1)
-          .html(generateTooltipContent(d))
-          .style('left', `${containerRect.right - 400}px`)
-          .style('top', `${containerRect.top + 20}px`)
-          .style('right', 'auto');
-      }
-      setFocusNode(d);
-      setSelected(d);
-    });
+    nodeController
+      .on('mouseover', (event, node) => {
+        setFocusNode(node);
+      })
+      .on('mouseout', () => {
+        setFocusNode(undefined);
+      })
+      .on('click', (_, node) => {
+        const ttEl = tooltipRef.current;
+        const container = document.getElementById('visualization-container');
+        if (ttEl && container) {
+          const containerRect = container.getBoundingClientRect();
+          d3.select(ttEl)
+            .style('opacity', 1)
+            .html(generateTooltipContent(node))
+            .style('left', `${containerRect.right - 400}px`)
+            .style('top', `${containerRect.top + 20}px`)
+            .style('right', 'auto');
+        }
+        setSelected(node);
+      });
 
     // Add click handler for tooltip close button
     if (tooltipRef.current) {
