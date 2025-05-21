@@ -88,9 +88,9 @@ export const calculateDOI = (node: NodeData, allNodes: NodeData[], params: DOIPa
 
   // Weights for the equation: DOI(x | y,z) = α*APIdiff(x) + β*UIdiff(x,z) + JD(x,y)
   const weights = {
-    alpha: 0.2, // a-priori importance
+    alpha: 0.3, // a-priori importance
     beta: 0.3, // user interest
-    gamma: 0.5, // joint distance
+    gamma: 0.4, // joint distance
   };
 
   const finalDOI = apiDiff * weights.alpha + uiDiff * weights.beta + jointDistance * weights.gamma;
