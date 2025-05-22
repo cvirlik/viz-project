@@ -24,11 +24,11 @@ const SearchResults: React.FC<SearchResultsProps> = ({
 }) => {
   const filteredResults = swEngData.vertices
     .filter(vertex => {
-      // Check if any string attribute matches the search query
+      // Check if any non-empty string attribute matches the search query
       const matchesSearch =
         searchQuery === '' ||
         Object.entries(vertex.attributes).some(([_, value]) => {
-          if (typeof value === 'string') {
+          if (typeof value === 'string' && value.trim() !== '') {
             return value.toLowerCase().includes(searchQuery.toLowerCase());
           }
           return false;
@@ -49,11 +49,13 @@ const SearchResults: React.FC<SearchResultsProps> = ({
       id: String(vertex.id),
       title: vertex.title,
       type: swEngData.vertexArchetypes[vertex.archetype],
-      // Include matching attributes in the result for display
+      // Include only non-empty matching attributes in the result for display
       matchingAttributes: Object.entries(vertex.attributes)
         .filter(
           ([_, value]) =>
-            typeof value === 'string' && value.toLowerCase().includes(searchQuery.toLowerCase())
+            typeof value === 'string' &&
+            value.trim() !== '' &&
+            value.toLowerCase().includes(searchQuery.toLowerCase())
         )
         .map(([key, value]) => ({ key, value })),
     }));
