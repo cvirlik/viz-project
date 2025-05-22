@@ -11,7 +11,6 @@ import { Sidebar } from './Sidebar';
 import { DOIProvider, useDOI } from '../providers/doi';
 import { generateTooltipContent } from '../utils/tooltip';
 import { extractInitials } from '../utils/string';
-import swEngData from '../data/SW-eng-anonymized-demo-graph.json';
 
 const Body: React.FC = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -305,7 +304,19 @@ const Body: React.FC = () => {
       const targetNode = positioned.find(n => n.id === d.target);
       const sourceDOI = sourceNode?.doi || 0;
       const targetDOI = targetNode?.doi || 0;
-      return sourceDOI >= 0.25 || targetDOI >= 0.25 ? 'visible' : 'hidden';
+
+      // If either node is the focused node, show the edge if the other node is visible
+      if (focusNode) {
+        if (sourceNode?.id === focusNode.id) {
+          return targetDOI >= 0.25 ? 'visible' : 'hidden';
+        }
+        if (targetNode?.id === focusNode.id) {
+          return sourceDOI >= 0.25 ? 'visible' : 'hidden';
+        }
+      }
+
+      // For non-focused nodes, both nodes must be visible to show the edge
+      return sourceDOI >= 0.25 && targetDOI >= 0.25 ? 'visible' : 'hidden';
     });
 
     nodeController.selectAll<SVGCircleElement, NodeData>('circle').attr('fill', (d: NodeData) => {
