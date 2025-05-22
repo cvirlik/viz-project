@@ -4,7 +4,7 @@ import { FruchtermanReingold } from '../layouts/fruchterman';
 import { hexToHSL, hslToHex } from '../utils/visual';
 import { calculateDOI } from '../utils/doi-calculator';
 import { LinkData, NodeData, parseData } from '../utils/data';
-import { makeControllers, makeNodes } from '../utils/d3-controllers';
+import { makeControllers, makeNodes, NodeController } from '../utils/d3-controllers';
 import { initSvg } from '../utils/svg';
 import { makeGradient } from '../utils/effects';
 import { Sidebar } from './Sidebar';
@@ -46,6 +46,17 @@ const Body: React.FC = () => {
       .transition()
       .duration(750)
       .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+
+    const selectedId = typeof selected === 'string' ? selected : selected.id;
+
+    const g = d3.select(svgEl).select('g');
+    const nodeController = g.selectAll<SVGGElement, NodeData>('g.node');
+    nodeController
+      .selectAll<SVGCircleElement, NodeData>('circle')
+      .attr('stroke', d => (d.id === selectedId ? 'black' : 'none'))
+      .attr('stroke-width', d => (d.id === selectedId ? 2 : 0));
+
+    nodeController.filter(d => d.id === selectedId).raise();
   };
 
   useEffect(() => {
@@ -202,7 +213,7 @@ const Body: React.FC = () => {
       .on('mouseout', () => {
         setFocusNode(undefined);
       })
-      .on('click', (_, node) => {
+      .on('click', function (_, node) {
         const ttEl = tooltipRef.current;
         const container = document.getElementById('visualization-container');
         if (ttEl && container) {
