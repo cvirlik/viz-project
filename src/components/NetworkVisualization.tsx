@@ -4,7 +4,7 @@ import { FruchtermanReingold } from '../layouts/fruchterman';
 import { hexToHSL, hslToHex } from '../utils/visual';
 import { calculateDOI } from '../utils/doi-calculator';
 import { LinkData, NodeData, parseData } from '../utils/data';
-import { makeControllers, makeNodes, NodeController } from '../utils/d3-controllers';
+import { makeControllers, makeNodes } from '../utils/d3-controllers';
 import { initSvg } from '../utils/svg';
 import { makeGradient } from '../utils/effects';
 import { Sidebar } from './Sidebar';
@@ -25,6 +25,7 @@ const Body: React.FC = () => {
   const updateDisplayRef = useRef<() => void>();
   const intervalRef = useRef<number>();
   const [isRunning, setIsRunning] = useState(false);
+  const hoverTimeoutRef = useRef<number | null>(null);
 
   const setSelected = (selected: NodeData | string) => {
     const svgEl = svgRef.current;
@@ -68,7 +69,7 @@ const Body: React.FC = () => {
 
     // Add click handler for the SVG container to clear focus
     svg.on('click', event => {
-      // Check if the click was directly on the SVG background
+      // Check if the click was ydirectly on the SVG background
       if (event.target === svg.node()) {
         if (tooltipRef.current) {
           d3.select(tooltipRef.current).style('opacity', 0);
@@ -208,9 +209,11 @@ const Body: React.FC = () => {
     // Add event handlers
     nodeController
       .on('mouseover', (event, node) => {
-        setFocusNode(node);
+        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = window.setTimeout(() => setFocusNode(node), 150);
       })
       .on('mouseout', () => {
+        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
         setFocusNode(undefined);
       })
       .on('click', function (_, node) {
@@ -298,6 +301,23 @@ const Body: React.FC = () => {
 
     // Reorder nodes in the DOM based on DOI
     nodeController.data(sortedNodes, d => d.id).order();
+
+    nodeController.attr('opacity', d => ((d.doi || 0) < 0.5 ? 0.1 : 1));
+
+    const linkController = g.selectAll<SVGLineElement, LinkData>('line');
+
+    linkController.attr('opacity', (d: LinkData) => {
+      const s = positioned.find(n => n.id === d.source);
+      const t = positioned.find(n => n.id === d.target);
+      const sDOI = s?.doi || 0;
+      const tDOI = t?.doi || 0;
+
+      if (focusNode) {
+        if (s?.id === focusNode.id) return tDOI >= 0.5 ? 1 : 0;
+        if (t?.id === focusNode.id) return sDOI >= 0.5 ? 1 : 0;
+      }
+      return sDOI >= 0.5 && tDOI >= 0.5 ? 1 : 0.1;
+    });
 
     nodeController.selectAll<SVGCircleElement, NodeData>('circle').attr('fill', d => {
       const baseColor = d3.schemeCategory10[d.group % 10];
