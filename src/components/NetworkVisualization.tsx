@@ -297,7 +297,7 @@ const Body: React.FC = () => {
     console.log('SORTED COUNT: ' + sortedNodes.length);
 
     nodeController.attr('visibility', d => {
-      return (d.doi || 0) < 0.25 ? 'hidden' : 'visible';
+      return (d.doi || 0) < 0.5 ? 'hidden' : 'visible';
     });
 
     // Update edge visibility based on connected nodes' DOI
@@ -311,15 +311,15 @@ const Body: React.FC = () => {
       // If either node is the focused node, show the edge if the other node is visible
       if (focusNode) {
         if (sourceNode?.id === focusNode.id) {
-          return targetDOI >= 0.25 ? 'visible' : 'hidden';
+          return targetDOI >= 0.5 ? 'visible' : 'hidden';
         }
         if (targetNode?.id === focusNode.id) {
-          return sourceDOI >= 0.25 ? 'visible' : 'hidden';
+          return sourceDOI >= 0.5 ? 'visible' : 'hidden';
         }
       }
 
       // For non-focused nodes, both nodes must be visible to show the edge
-      return sourceDOI >= 0.25 && targetDOI >= 0.25 ? 'visible' : 'hidden';
+      return sourceDOI >= 0.5 && targetDOI >= 0.5 ? 'visible' : 'hidden';
     });
 
     nodeController.selectAll<SVGCircleElement, NodeData>('circle').attr('fill', (d: NodeData) => {
