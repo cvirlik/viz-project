@@ -29,7 +29,8 @@ const makeEdgeLabels = (g: SvgController, links: LinkData[]) => {
         edge => String(edge.from) === link.source && String(edge.to) === link.target
       );
       const attributes = edge?.attributes as Record<string, string> | undefined;
-      return attributes?.['3'] || '';
+      // Get the first attribute value if it exists
+      return attributes ? Object.values(attributes)[0] || '' : '';
     });
 
   return edgeController;
