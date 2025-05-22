@@ -333,7 +333,7 @@ const Body: React.FC = () => {
     // Update node text with new DOI values
     nodeController
       .selectAll<SVGTextElement, NodeData>('text')
-      .text((d: NodeData) => `${extractInitials(d.name)} (${(d.doi || 0).toFixed(2)})`);
+      .text((d: NodeData) => extractInitials(d.name));
 
     // Update z-index based on DOI
     nodeController.attr('style', (d: NodeData) => {
