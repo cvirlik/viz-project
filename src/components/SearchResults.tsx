@@ -35,12 +35,16 @@ const SearchResults: React.FC<SearchResultsProps> = ({
         }) ||
         vertex.title.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const beginDate = vertex.attributes['1'] ? new Date(vertex.attributes['1']).getTime() : 0;
-      const endDate = vertex.attributes['2']
-        ? new Date(vertex.attributes['2']).getTime()
-        : beginDate;
-
-      const matchesDateRange = beginDate >= dateRange.min && endDate <= dateRange.max;
+      // Check if any date attribute falls within the date range
+      const matchesDateRange = Object.entries(vertex.attributes).some(([_, value]) => {
+        if (typeof value === 'string') {
+          const date = new Date(value).getTime();
+          if (!isNaN(date)) {
+            return date >= dateRange.min && date <= dateRange.max;
+          }
+        }
+        return false;
+      });
 
       const matchesArchetype = selectedArchetypes.includes(vertex.archetype);
       return matchesSearch && matchesDateRange && matchesArchetype;
