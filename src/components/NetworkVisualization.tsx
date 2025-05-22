@@ -190,6 +190,8 @@ const Body: React.FC = () => {
           return n ? n.y : 0;
         });
 
+      // Edge labels are currently disabled
+      /*
       edgeController.attr('transform', d => {
         const { s, t } = getEndNodes(d);
         const sx = s ? s.x : 0;
@@ -210,6 +212,7 @@ const Body: React.FC = () => {
           .attr('width', bb.width + 4)
           .attr('height', bb.height + 2);
       });
+      */
 
       nodeController.attr('transform', d => {
         const n = positioned.find(n => n.id === d.id);

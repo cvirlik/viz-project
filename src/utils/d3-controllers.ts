@@ -55,7 +55,15 @@ export const makeControllers = (g: SvgController, links: LinkData[], nodes: Node
     .append('g')
     .attr('class', 'node');
 
-  const edgeController = makeEdgeLabels(g, links);
+  // Edge labels are currently disabled
+  // const edgeController = makeEdgeLabels(g, links);
+  const edgeController = g
+    .append('g')
+    .selectAll<SVGGElement, LinkData>('g.edge-label-group')
+    .data(links)
+    .enter()
+    .append('g')
+    .attr('class', 'edge-label-group');
 
   return { linkController, nodeController, edgeController };
 };
