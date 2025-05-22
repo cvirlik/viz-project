@@ -103,7 +103,8 @@ const calculateJointDistance = (
   focusNode: NodeData | undefined,
   allNodes: NodeData[]
 ): number => {
-  if (!focusNode) return 0.5;
+  // If no focus node, return a default high value to boost all nodes
+  if (!focusNode) return 0.8;
 
   // Check if we need to recompute distances
   if (lastFocusNode !== focusNode.id) {
