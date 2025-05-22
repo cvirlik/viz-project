@@ -78,7 +78,15 @@ export const makeNodes = (nodeController: NodeController, nodes: NodeData[]) => 
       const l = 90 - (node.doi || 0) * 60; // Scale DOI from 90% to 30% lightness
       return hslToHex(h, s, l);
     })
-    .attr('opacity', 1);
+    .attr('opacity', 1)
+    .style('filter', 'drop-shadow(0px 0px 0px rgba(0,0,0,0))') // Initial state: no shadow
+    .style('transition', 'filter 0.2s ease-in-out') // Smooth transition for shadow
+    .on('mouseover', function () {
+      d3.select(this).style('filter', 'drop-shadow(0px 0px 8px rgba(0,0,0,0.3))'); // Add shadow on hover
+    })
+    .on('mouseout', function () {
+      d3.select(this).style('filter', 'drop-shadow(0px 0px 0px rgba(0,0,0,0))'); // Remove shadow
+    });
 
   nodeController
     .append('text')
