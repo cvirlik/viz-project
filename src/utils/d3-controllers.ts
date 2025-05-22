@@ -8,6 +8,7 @@ export type NodeController = d3.Selection<SVGGElement, NodeData, SVGGElement, un
 export type EdgeController = d3.Selection<SVGGElement, LinkData, SVGGElement, unknown>;
 export type LinkController = d3.Selection<SVGLineElement, LinkData, SVGGElement, unknown>;
 
+// Odstraneno, protoze to rusilo
 const makeEdgeLabels = (g: SvgController, links: LinkData[]) => {
   const edgeController = g
     .append('g')

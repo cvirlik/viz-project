@@ -11,10 +11,9 @@ type DOIParams = {
   focusNode?: NodeData;
 };
 
-// Cache for API values
+// API = stupne
 let apiCache: Map<string, number> | null = null;
-
-// Cache for UI values
+// UI = filtry
 let uiCache: Map<string, number> | null = null;
 let lastSearchParams: {
   query: string;
@@ -22,12 +21,10 @@ let lastSearchParams: {
   dateRange: { min: number; max: number };
 } | null = null;
 
-// Cache for distance values
 let distanceCache: Map<string, Map<string, number>> | null = null;
 let lastFocusNode: string | null = null;
 
 const calculateAPIdiff = (node: NodeData, allNodes: NodeData[]): number => {
-  // Initialize cache if needed
   if (!apiCache) {
     apiCache = new Map();
     const maxDegree = Math.max(...allNodes.map(n => n.degree || 0));
@@ -44,7 +41,6 @@ const calculateAPIdiff = (node: NodeData, allNodes: NodeData[]): number => {
 };
 
 const calculateUIdiff = (node: NodeData, params: DOIParams): number => {
-  // Check if we need to recompute UI values
   const currentParams = {
     query: params.searchQuery,
     archetypes: params.selectedArchetypes,
@@ -63,12 +59,10 @@ const calculateUIdiff = (node: NodeData, params: DOIParams): number => {
     lastSearchParams = currentParams;
   }
 
-  // Return cached value if available
   if (uiCache?.has(node.id)) {
     return uiCache.get(node.id)!;
   }
 
-  // Calculate new UI value
   const searchRelevance = params.searchQuery
     ? node.name.toLowerCase().includes(params.searchQuery.toLowerCase())
       ? 1
@@ -78,6 +72,7 @@ const calculateUIdiff = (node: NodeData, params: DOIParams): number => {
   const archetypeRelevance = params.selectedArchetypes.includes(node.group) ? 1 : 0;
 
   const vertex = newData.vertices.find(v => String(v.id) === node.id);
+  // TODO: Make generalized
   const createdDate = vertex?.attributes['9'] ? new Date(vertex.attributes['9']).getTime() : 0;
   const dateRelevance =
     createdDate >= params.dateRange.min && createdDate <= params.dateRange.max ? 1 : 0;
@@ -112,7 +107,6 @@ const calculateJointDistance = (
     lastFocusNode = focusNode.id;
   }
 
-  // Return cached distance if available
   if (distanceCache?.has(focusNode.id) && distanceCache.get(focusNode.id)?.has(node.id)) {
     return distanceCache.get(focusNode.id)!.get(node.id)!;
   }

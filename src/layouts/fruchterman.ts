@@ -35,12 +35,16 @@ export class FruchtermanReingold {
     this.links = links;
     this.width = options.width;
     this.height = options.height;
-    this.iterations = options.iterations ?? 50;
+    this.iterations = options.iterations ?? 50; // replaced by button now
+    // k is optimal distance between nodes
     this.k = options.k ?? Math.sqrt((this.width * this.height) / this.nodes.length);
+    // temperature control how much nodes can move
     this.temperature = options.temperature ?? this.width / 4;
+    // cooling factor make movement slower over time
     this.coolingFactor = options.coolingFactor ?? 0.95;
   }
 
+  // Calculate forces that push nodes away from each other
   private calculateRepulsiveForces() {
     this.forces.clear();
     this.nodes.forEach(n => this.forces.set(n.id, { x: 0, y: 0 }));
@@ -52,6 +56,7 @@ export class FruchtermanReingold {
           dy = b.y - a.y;
         const dist = Math.hypot(dx, dy);
         if (dist === 0) continue;
+        // Force is stronger when nodes are closer
         const force = (this.k * this.k) / dist;
         const fx = (dx / dist) * force;
         const fy = (dy / dist) * force;
@@ -67,12 +72,14 @@ export class FruchtermanReingold {
     }
   }
 
+  // Calculate forces that pull connected nodes together
   private calculateAttractiveForces() {
     this.links.forEach(link => {
       const dx = link.target.x - link.source.x;
       const dy = link.target.y - link.source.y;
       const dist = Math.hypot(dx, dy);
       if (dist === 0) return;
+      // Force is stronger when nodes are further
       const force = (dist * dist) / this.k;
       const fx = (dx / dist) * force;
       const fy = (dy / dist) * force;
@@ -87,6 +94,7 @@ export class FruchtermanReingold {
     });
   }
 
+  // Add force that pull all nodes to center of screen
   private calculateCenteringForces(strength = 0.1) {
     const cx = this.width / 2,
       cy = this.height / 2;
@@ -99,6 +107,7 @@ export class FruchtermanReingold {
     });
   }
 
+  // Update position of nodes based on calculated forces
   private updatePositions() {
     this.nodes.forEach(n => {
       if (n.fx == null && n.fy == null) {
@@ -106,6 +115,7 @@ export class FruchtermanReingold {
         if (f) {
           const mag = Math.hypot(f.x, f.y);
           if (mag > 0) {
+            // Limit movement by temperature
             const step = Math.min(mag, this.temperature);
             n.x += (f.x / mag) * step;
             n.y += (f.y / mag) * step;
@@ -115,14 +125,17 @@ export class FruchtermanReingold {
     });
   }
 
+  // Do one step of layout calculation
   public step(): void {
     this.calculateRepulsiveForces();
     this.calculateAttractiveForces();
     this.calculateCenteringForces();
     this.updatePositions();
+    // Make temperature smaller for next step
     this.temperature *= this.coolingFactor;
   }
 
+  // Run layout for all iterations and return final positions
   public run(): NodeData[] {
     for (let i = 0; i < this.iterations; i++) {
       this.step();
