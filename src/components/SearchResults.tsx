@@ -24,8 +24,16 @@ const SearchResults: React.FC<SearchResultsProps> = ({
 }) => {
   const filteredResults = swEngData.vertices
     .filter(vertex => {
+      // Check if any string attribute matches the search query
       const matchesSearch =
-        searchQuery === '' || vertex.title.toLowerCase().includes(searchQuery.toLowerCase());
+        searchQuery === '' ||
+        Object.entries(vertex.attributes).some(([_, value]) => {
+          if (typeof value === 'string') {
+            return value.toLowerCase().includes(searchQuery.toLowerCase());
+          }
+          return false;
+        }) ||
+        vertex.title.toLowerCase().includes(searchQuery.toLowerCase());
 
       const beginDate = vertex.attributes['1'] ? new Date(vertex.attributes['1']).getTime() : 0;
       const endDate = vertex.attributes['2']
@@ -35,14 +43,19 @@ const SearchResults: React.FC<SearchResultsProps> = ({
       const matchesDateRange = beginDate >= dateRange.min && endDate <= dateRange.max;
 
       const matchesArchetype = selectedArchetypes.includes(vertex.archetype);
-      // OR stačí. Nemusí pasovat title i datum.
-      // Spíš pak zvětšit nodes, které vyhovují oběma filterům.
       return matchesSearch && matchesDateRange && matchesArchetype;
     })
     .map(vertex => ({
       id: String(vertex.id),
       title: vertex.title,
       type: swEngData.vertexArchetypes[vertex.archetype],
+      // Include matching attributes in the result for display
+      matchingAttributes: Object.entries(vertex.attributes)
+        .filter(
+          ([_, value]) =>
+            typeof value === 'string' && value.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .map(([key, value]) => ({ key, value })),
     }));
 
   const handleResultClick = (resultId: string) => {
@@ -65,6 +78,15 @@ const SearchResults: React.FC<SearchResultsProps> = ({
             >
               <div className="result-title">{result.title}</div>
               <div className="result-type">{result.type.name}</div>
+              {result.matchingAttributes.length > 0 && (
+                <div className="result-matches">
+                  {result.matchingAttributes.map(({ key, value }) => (
+                    <div key={key} className="result-match">
+                      <span className="match-key">{key}:</span> {value}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
